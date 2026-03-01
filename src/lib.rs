@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::lexer::Lexer;
+use crate::parser::Parser;
 
 pub const JACK_INT_MAX: u32 = 32767;
 
@@ -94,6 +95,14 @@ impl JackCompiler {
         for file in &self.source_files {
             let lexer = Lexer::new(&file.contents).tokenize();
             println!("{}\n{lexer:?}\n{}", file.name, file.output_path.display());
+        }
+    }
+
+    pub fn parse(&self) {
+        for file in &self.source_files {
+            let lexer = Lexer::new(&file.contents).tokenize();
+            let mut parser = Parser::new(lexer.unwrap());
+            println!("{:#?}", parser);
         }
     }
 

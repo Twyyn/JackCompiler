@@ -11,7 +11,7 @@ fn main() -> Result<(), CompilerError> {
     })?;
 
     let compiler = JackCompiler::new(&source)?;
-    compiler.tokenize();
+    compiler.parse();
 
     Ok(())
 }
