@@ -6,21 +6,16 @@ mod symbol;
 pub use error::TokenError;
 pub use keyword::Keyword;
 pub use kind::{Identifier, TokenKind};
-use std::fmt::{self};
 pub use symbol::Symbol;
+
+use std::fmt;
+
+// --- Token ---
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
     pub span: Span,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Span {
-    pub offset: u32,
-    pub len: u16,
-    pub line: u32,
-    pub column: u16,
 }
 
 impl<'src> Token<'src> {
@@ -32,9 +27,24 @@ impl<'src> Token<'src> {
     #[must_use]
     pub fn lexeme(&self, source: &'src str) -> &'src str {
         let start = self.span.offset as usize;
-
         &source[start..start + self.span.len as usize]
     }
+}
+
+impl fmt::Display for Token<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
+}
+
+// --- Span ---
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Span {
+    pub offset: u32,
+    pub len: u16,
+    pub line: u32,
+    pub column: u16,
 }
 
 impl Span {
@@ -46,11 +56,5 @@ impl Span {
             line,
             column,
         }
-    }
-}
-
-impl fmt::Display for Token<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
     }
 }

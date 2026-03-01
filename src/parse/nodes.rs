@@ -1,4 +1,4 @@
-pub use super::Statement;
+use super::{Expression, Statement};
 
 // --- Types ---
 
@@ -25,6 +25,12 @@ pub struct Class<'src> {
     pub subroutines: Vec<SubroutineDec<'src>>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClassVarKind {
+    Static,
+    Field,
+}
+
 #[derive(Debug)]
 pub struct ClassVarDec<'src> {
     pub var_kind: ClassVarKind,
@@ -32,13 +38,14 @@ pub struct ClassVarDec<'src> {
     pub names: Vec<&'src str>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ClassVarKind {
-    Static,
-    Field,
-}
-
 // --- Subroutine ---
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SubroutineKind {
+    Constructor,
+    Function,
+    Method,
+}
 
 #[derive(Debug)]
 pub struct SubroutineDec<'src> {
@@ -50,10 +57,10 @@ pub struct SubroutineDec<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SubroutineKind {
-    Constructor,
-    Function,
-    Method,
+pub struct SubroutineCall<'src> {
+    pub name: &'src str,
+    pub receiver: Option<&'src str>,
+    pub arguments: Vec<Expression<'src>>,
 }
 
 #[derive(Debug)]
@@ -67,6 +74,8 @@ pub struct SubroutineBody<'src> {
     pub variables: Vec<VarDec<'src>>,
     pub statements: Vec<Statement<'src>>,
 }
+
+// --- Variables ---
 
 #[derive(Debug)]
 pub struct VarDec<'src> {

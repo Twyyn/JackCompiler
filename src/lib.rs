@@ -1,22 +1,19 @@
-pub mod ast;
 pub mod error;
 pub mod lexer;
+pub mod parse;
 pub mod parser;
 pub mod token;
 
-use error::CompilerError;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::error::CompilerError;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 
 pub const JACK_INT_MAX: u32 = 32767;
 
-#[derive(Debug)]
-pub struct JackCompiler {
-    pub source_files: Vec<SourceFile>,
-}
+// --- Source File ---
 
 #[derive(Debug)]
 pub struct SourceFile {
@@ -34,6 +31,13 @@ impl SourceFile {
             output_path,
         }
     }
+}
+
+// --- Jack Compiler ---
+
+#[derive(Debug)]
+pub struct JackCompiler {
+    pub source_files: Vec<SourceFile>,
 }
 
 impl JackCompiler {
@@ -102,11 +106,12 @@ impl JackCompiler {
         for file in &self.source_files {
             let lexer = Lexer::new(&file.contents).tokenize();
             let mut parser = Parser::new(lexer.unwrap());
-            println!("{:#?}", parser);
+            println!("{:#?}", parser.parse_class());
         }
     }
 
     // --- Filesystem Helpers ---
+
     fn is_jack_file(source: &Path) -> bool {
         source.is_file() && source.extension().is_some_and(|ext| ext == "jack")
     }

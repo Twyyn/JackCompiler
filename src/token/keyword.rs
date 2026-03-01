@@ -82,7 +82,7 @@ impl fmt::Display for Keyword {
             Self::If          => "if",
             Self::Else        => "else",
             Self::While       => "while",
-            Self::Return      => "return"
+            Self::Return      => "return",
         };
 
         write!(f, "{s}")

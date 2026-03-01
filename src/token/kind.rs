@@ -1,5 +1,6 @@
-use super::{Keyword, Symbol};
 use std::fmt;
+
+use super::{Keyword, Symbol};
 
 pub type Identifier<'a> = &'a str;
 

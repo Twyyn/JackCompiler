@@ -1,6 +1,6 @@
-use crate::JACK_INT_MAX;
-
 use std::fmt;
+
+use crate::JACK_INT_MAX;
 
 #[derive(Debug)]
 pub enum TokenError {
@@ -13,7 +13,7 @@ pub enum TokenError {
 }
 
 impl fmt::Display for TokenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IntegerOutOfRange(int) => write!(
                 f,

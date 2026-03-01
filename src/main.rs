@@ -1,6 +1,7 @@
-use jack_compiler::JackCompiler;
-use jack_compiler::error::CompilerError;
 use std::io::ErrorKind;
+
+use jack_compiler::error::CompilerError;
+use jack_compiler::JackCompiler;
 
 fn main() -> Result<(), CompilerError> {
     let source = std::env::args().nth(1).ok_or_else(|| {
