@@ -273,7 +273,10 @@ impl<'t> Parser<'t> {
                 }
 
                 TokenKind::Keyword(Keyword::Return) => {
-                    todo!()
+                    let expression = self.parse_expression()?;
+                    self.expect(TokenKind::Symbol(Symbol::Semicolon))?;
+
+                    Ok(Statement::Return(ReturnStatement::new(Some(expression))))
                 }
 
                 _ => Err(ParseError::UnexpectedToken(token)),
@@ -284,7 +287,41 @@ impl<'t> Parser<'t> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression<'t>, ParseError<'t>> {
-        todo!()
+        match self.advance() {
+            Some(token) => match token.kind {
+                TokenKind::IntegerConstant(integer) => {
+                    todo!()
+                }
+                TokenKind::StringConstant(string) => {
+                    todo!()
+                }
+                TokenKind::Keyword(keyword) => match keyword {
+                    Keyword::True => Ok(Expression::new(
+                        Term::KeywordConstant(KeywordConstant::True),
+                        None,
+                    )),
+                    Keyword::False => Ok(Expression::new(
+                        Term::KeywordConstant(KeywordConstant::False),
+                        None,
+                    )),
+                    Keyword::Null => Ok(Expression::new(
+                        Term::KeywordConstant(KeywordConstant::Null),
+                        None,
+                    )),
+                    Keyword::This => Ok(Expression::new(
+                        Term::KeywordConstant(KeywordConstant::This),
+                        None,
+                    )),
+                    _ => return Err(ParseError::UnexpectedToken(token)),
+                },
+                TokenKind::Symbol(symbol) => {
+                    todo!()
+                }
+                TokenKind::Identifier(identifier) => {
+                    todo!()
+                }
+            },
+        }
     }
     // --- Type Parsing ---
 

@@ -4,7 +4,7 @@ mod nodes;
 mod statements;
 
 pub use error::ParseError;
-pub use expressions::Expression;
+pub use expressions::*;
 pub use nodes::*;
 pub use statements::*;
 
