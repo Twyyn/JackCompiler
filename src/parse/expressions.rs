@@ -18,15 +18,13 @@ impl<'src> Expression<'src> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'src> {
-    IntegerConstant(u32),
+    IntegerConstant(u16),
     StringConstant(&'src str),
     KeywordConstant(KeywordConstant),
     Variable(&'src str),
     Grouped(Box<Expression<'src>>),
     Unary(UnaryOperation, Box<Term<'src>>),
 }
-
-
 
 // --- Operations ---
 

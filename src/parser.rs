@@ -287,40 +287,37 @@ impl<'t> Parser<'t> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression<'t>, ParseError<'t>> {
+        todo!()
+    }
+    fn parse_term(&mut self) -> Result<Term<'t>, ParseError<'t>> {
         match self.advance() {
             Some(token) => match token.kind {
-                TokenKind::IntegerConstant(integer) => {
-                    todo!()
-                }
-                TokenKind::StringConstant(string) => {
-                    todo!()
-                }
+                TokenKind::IntegerConstant(integer) => Ok(Term::IntegerConstant(integer)),
+                TokenKind::StringConstant(string) => Ok(Term::StringConstant(string)),
                 TokenKind::Keyword(keyword) => match keyword {
-                    Keyword::True => Ok(Expression::new(
-                        Term::KeywordConstant(KeywordConstant::True),
-                        None,
-                    )),
-                    Keyword::False => Ok(Expression::new(
-                        Term::KeywordConstant(KeywordConstant::False),
-                        None,
-                    )),
-                    Keyword::Null => Ok(Expression::new(
-                        Term::KeywordConstant(KeywordConstant::Null),
-                        None,
-                    )),
-                    Keyword::This => Ok(Expression::new(
-                        Term::KeywordConstant(KeywordConstant::This),
-                        None,
-                    )),
-                    _ => return Err(ParseError::UnexpectedToken(token)),
+                    Keyword::True => Ok(Term::KeywordConstant(KeywordConstant::True)),
+                    Keyword::False => Ok(Term::KeywordConstant(KeywordConstant::False)),
+                    Keyword::Null => Ok(Term::KeywordConstant(KeywordConstant::Null)),
+                    Keyword::This => Ok(Term::KeywordConstant(KeywordConstant::This)),
+                    _ => Err(ParseError::UnexpectedToken(token)),
                 },
-                TokenKind::Symbol(symbol) => {
-                    todo!()
+                TokenKind::Identifier(name) => Ok(Term::Variable(name)),
+                TokenKind::Symbol(Symbol::LeftParen) => {
+                    let expr = self.parse_expression()?;
+                    self.expect(TokenKind::Symbol(Symbol::RightParen))?;
+                    Ok(Term::Grouped(Box::new(expr)))
                 }
-                TokenKind::Identifier(identifier) => {
-                    todo!()
+                TokenKind::Symbol(Symbol::Minus) => {
+                    let term = self.parse_term()?;
+                    Ok(Term::Unary(UnaryOperation::Minus, Box::new(term)))
                 }
+                TokenKind::Symbol(Symbol::Tilde) => {
+                    let term = self.parse_term()?;
+                    Ok(Term::Unary(UnaryOperation::Tilde, Box::new(term)))
+                }
+                _ => Err(ParseError::UnexpectedToken(token)),
             },
+            None => Err(ParseError::UnexpectedEof),
         }
     }
     // --- Type Parsing ---
