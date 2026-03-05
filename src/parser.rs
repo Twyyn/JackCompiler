@@ -14,7 +14,6 @@ impl<'t> Parser<'t> {
     }
 
     // --- Class Parsing ---
-
     pub fn parse_class(&mut self) -> Result<Class<'t>, ParseError<'t>> {
         self.expect(TokenKind::Keyword(Keyword::Class))?;
 
@@ -170,16 +169,26 @@ impl<'t> Parser<'t> {
 
     // --- Statement Parsing ---
 
-    fn parse_statement(&mut self) -> Result<Statement<'t>, ParseError<'t>> {
+    pub fn parse_statement(&mut self) -> Result<Statement<'t>, ParseError<'t>> {
         match self.advance() {
             Some(token) => match token.kind {
                 TokenKind::Keyword(Keyword::Let) => {
                     let name = self.expect_identifier()?;
+                    let (name, index) = if self.peek().map(|token| token.kind)
+                        == Some(TokenKind::Symbol(Symbol::LeftBracket))
+                    {
+                        self.advance(); // consume '['
+                        let index = self.parse_expression()?;
+                        self.expect(TokenKind::Symbol(Symbol::RightBracket))?; // consume ']'
+                        (name, Some(index))
+                    } else {
+                        (name, None)
+                    };
                     self.expect(TokenKind::Symbol(Symbol::Equal))?;
                     let expression = self.parse_expression()?;
                     self.expect(TokenKind::Symbol(Symbol::Semicolon))?;
 
-                    Ok(Statement::Let(LetStatement::new(name, None, expression)))
+                    Ok(Statement::Let(LetStatement::new(name, index, expression)))
                 }
 
                 TokenKind::Keyword(Keyword::If) => {
@@ -273,10 +282,17 @@ impl<'t> Parser<'t> {
                 }
 
                 TokenKind::Keyword(Keyword::Return) => {
-                    let expression = self.parse_expression()?;
+                    // Fix 2: peek before parsing — `return;` is valid in Jack (void return)
+                    let expression = if self.peek().map(|t| t.kind)
+                        != Some(TokenKind::Symbol(Symbol::Semicolon))
+                    {
+                        Some(self.parse_expression()?)
+                    } else {
+                        None
+                    };
                     self.expect(TokenKind::Symbol(Symbol::Semicolon))?;
 
-                    Ok(Statement::Return(ReturnStatement::new(Some(expression))))
+                    Ok(Statement::Return(ReturnStatement::new(expression)))
                 }
 
                 _ => Err(ParseError::UnexpectedToken(token)),
@@ -286,9 +302,52 @@ impl<'t> Parser<'t> {
         }
     }
 
+    // --- Expression Parsing ---
     fn parse_expression(&mut self) -> Result<Expression<'t>, ParseError<'t>> {
-        todo!()
+        let term = self.parse_term()?;
+        // Fix 3: operations is now Vec, not Option<Vec>
+        let mut operations = Vec::new();
+
+        while let Some(operation) = self.peek_binary_operation() {
+            self.advance(); // consume operator
+            let term = self.parse_term()?;
+            operations.push((operation, term));
+        }
+
+        Ok(Expression { term, operations })
     }
+
+    // --- Operation Parsing ---
+
+    fn peek_binary_operation(&self) -> Option<Operation> {
+        match self.peek()?.kind {
+            TokenKind::Symbol(Symbol::Plus) => Some(Operation::Add),
+            TokenKind::Symbol(Symbol::Minus) => Some(Operation::Sub),
+            TokenKind::Symbol(Symbol::Star) => Some(Operation::Mul),
+            TokenKind::Symbol(Symbol::Slash) => Some(Operation::Div),
+            TokenKind::Symbol(Symbol::Ampersand) => Some(Operation::And),
+            TokenKind::Symbol(Symbol::Pipe) => Some(Operation::Or),
+            TokenKind::Symbol(Symbol::GreaterThan) => Some(Operation::GreaterThan),
+            TokenKind::Symbol(Symbol::LessThan) => Some(Operation::LessThan),
+            TokenKind::Symbol(Symbol::Equal) => Some(Operation::Equal),
+            _ => None,
+        }
+    }
+
+    fn parse_arguments(&mut self) -> Result<Vec<Expression<'t>>, ParseError<'t>> {
+        let mut arguments = Vec::new();
+        while self.peek().map(|t| t.kind) != Some(TokenKind::Symbol(Symbol::RightParen)) {
+            arguments.push(self.parse_expression()?);
+            if self.peek().map(|t| t.kind) == Some(TokenKind::Symbol(Symbol::Comma)) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(arguments)
+    }
+
+    // --- Term Parsing ---
     fn parse_term(&mut self) -> Result<Term<'t>, ParseError<'t>> {
         match self.advance() {
             Some(token) => match token.kind {
@@ -301,7 +360,39 @@ impl<'t> Parser<'t> {
                     Keyword::This => Ok(Term::KeywordConstant(KeywordConstant::This)),
                     _ => Err(ParseError::UnexpectedToken(token)),
                 },
-                TokenKind::Identifier(name) => Ok(Term::Variable(name)),
+                TokenKind::Identifier(name) => {
+                    match self.peek().map(|t| t.kind) {
+                        Some(TokenKind::Symbol(Symbol::LeftBracket)) => {
+                            self.advance(); // consume '['
+                            let index = self.parse_expression()?;
+                            self.expect(TokenKind::Symbol(Symbol::RightBracket))?;
+                            Ok(Term::ArrayAccess(name, Box::new(index)))
+                        }
+                        Some(TokenKind::Symbol(Symbol::Dot)) => {
+                            self.advance(); // consume '.'
+                            let method = self.expect_identifier()?;
+                            self.expect(TokenKind::Symbol(Symbol::LeftParen))?;
+                            let arguments = self.parse_arguments()?;
+                            self.expect(TokenKind::Symbol(Symbol::RightParen))?;
+                            Ok(Term::SubroutineCall(SubroutineCall {
+                                receiver: Some(name),
+                                name: method,
+                                arguments,
+                            }))
+                        }
+                        Some(TokenKind::Symbol(Symbol::LeftParen)) => {
+                            self.advance(); // consume '('
+                            let arguments = self.parse_arguments()?;
+                            self.expect(TokenKind::Symbol(Symbol::RightParen))?;
+                            Ok(Term::SubroutineCall(SubroutineCall {
+                                receiver: None,
+                                name,
+                                arguments,
+                            }))
+                        }
+                        _ => Ok(Term::Variable(name)),
+                    }
+                }
                 TokenKind::Symbol(Symbol::LeftParen) => {
                     let expr = self.parse_expression()?;
                     self.expect(TokenKind::Symbol(Symbol::RightParen))?;
@@ -320,6 +411,7 @@ impl<'t> Parser<'t> {
             None => Err(ParseError::UnexpectedEof),
         }
     }
+
     // --- Type Parsing ---
 
     #[rustfmt::skip]
@@ -329,6 +421,8 @@ impl<'t> Parser<'t> {
                 TokenKind::Keyword(Keyword::Int)     => Ok(Kind::Int),
                 TokenKind::Keyword(Keyword::Char)    => Ok(Kind::Char),
                 TokenKind::Keyword(Keyword::Boolean) => Ok(Kind::Boolean),
+                // Fix 1: handle class types e.g. `field Point p;`
+                TokenKind::Identifier(name)          => Ok(Kind::Class(name)),
 
                 _ => Err(ParseError::UnexpectedToken(token)),
             },
@@ -338,16 +432,12 @@ impl<'t> Parser<'t> {
 
     // --- Token Navigation Helpers ---
 
-    fn has_more_tokens(&self) -> bool {
-        self.pos < self.tokens.len()
-    }
-
     fn peek(&self) -> Option<Token<'t>> {
         self.tokens.get(self.pos).copied()
     }
 
     fn advance(&mut self) -> Option<Token<'t>> {
-        if self.has_more_tokens() {
+        if self.pos < self.tokens.len() {
             let token = self.tokens[self.pos];
             self.pos += 1;
             Some(token)

@@ -106,7 +106,7 @@ impl JackCompiler {
         for file in &self.source_files {
             let lexer = Lexer::new(&file.contents).tokenize();
             let mut parser = Parser::new(lexer.unwrap());
-            println!("{:#?}", parser.parse_class());
+            println!("{:#?}", parser.parse_statement());
         }
     }
 

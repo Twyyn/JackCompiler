@@ -13,15 +13,20 @@ pub enum Statement<'src> {
 
 // --- Let ---
 
+// Fix 4: private fields → public for consistency with the rest of the AST
 #[derive(Debug)]
 pub struct LetStatement<'src> {
-    name: &'src str,
-    index: Option<u16>,
-    expression: Expression<'src>,
+    pub name: &'src str,
+    pub index: Option<Expression<'src>>,
+    pub expression: Expression<'src>,
 }
 
 impl<'src> LetStatement<'src> {
-    pub fn new(name: &'src str, index: Option<u16>, expression: Expression<'src>) -> Self {
+    pub fn new(
+        name: &'src str,
+        index: Option<Expression<'src>>,
+        expression: Expression<'src>,
+    ) -> Self {
         Self {
             name,
             index,
@@ -34,9 +39,9 @@ impl<'src> LetStatement<'src> {
 
 #[derive(Debug)]
 pub struct IfStatement<'src> {
-    condition: Expression<'src>,
-    statements: Vec<Statement<'src>>,
-    else_statements: Option<Vec<Statement<'src>>>,
+    pub condition: Expression<'src>,
+    pub statements: Vec<Statement<'src>>,
+    pub else_statements: Option<Vec<Statement<'src>>>,
 }
 
 impl<'src> IfStatement<'src> {
@@ -57,8 +62,8 @@ impl<'src> IfStatement<'src> {
 
 #[derive(Debug)]
 pub struct WhileStatement<'src> {
-    condition: Expression<'src>,
-    statements: Vec<Statement<'src>>,
+    pub condition: Expression<'src>,
+    pub statements: Vec<Statement<'src>>,
 }
 
 impl<'src> WhileStatement<'src> {
@@ -74,7 +79,7 @@ impl<'src> WhileStatement<'src> {
 
 #[derive(Debug)]
 pub struct DoStatement<'src> {
-    subroutine: SubroutineCall<'src>,
+    pub subroutine: SubroutineCall<'src>,
 }
 
 impl<'src> DoStatement<'src> {
@@ -87,7 +92,7 @@ impl<'src> DoStatement<'src> {
 
 #[derive(Debug)]
 pub struct ReturnStatement<'src> {
-    expression: Option<Expression<'src>>,
+    pub expression: Option<Expression<'src>>,
 }
 
 impl<'src> ReturnStatement<'src> {
@@ -95,12 +100,3 @@ impl<'src> ReturnStatement<'src> {
         Self { expression }
     }
 }
-
-// impl fmt::Display for LetStatement<'_> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match (self.name, self.index, self.expression.clone()) {
-//             (name, Some(index), expression) => write!(f, "{name} {index} {expression}"),
-//             (name, None, expression) => write!(f, "{name} {expression}"),
-//         }
-//     }
-// }
