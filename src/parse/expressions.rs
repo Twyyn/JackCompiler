@@ -3,29 +3,29 @@ use std::fmt;
 
 // --- Expression ---
 #[derive(Debug, Clone, PartialEq)]
-pub struct Expression<'src> {
-    pub term: Term<'src>,
-    pub operations: Vec<(Operation, Term<'src>)>, // Fix 3: Option<Vec> → Vec
+pub struct Expression {
+    pub term: Term,
+    pub operations: Vec<(Operation, Term)>,
 }
 
-impl<'src> Expression<'src> {
+impl Expression {
     #[must_use]
-    pub fn new(term: Term<'src>, operations: Vec<(Operation, Term<'src>)>) -> Self {
+    pub fn new(term: Term, operations: Vec<(Operation, Term)>) -> Self {
         Self { term, operations }
     }
 }
 
 // --- Term ---
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term<'src> {
+pub enum Term {
     IntegerConstant(u16),
-    StringConstant(&'src str),
+    StringConstant(Box<str>),
     KeywordConstant(KeywordConstant),
-    Variable(&'src str),
-    ArrayAccess(&'src str, Box<Expression<'src>>),
-    SubroutineCall(SubroutineCall<'src>),
-    Grouped(Box<Expression<'src>>),
-    Unary(UnaryOperation, Box<Term<'src>>),
+    Variable(Box<str>),
+    ArrayAccess(Box<str>, Box<Expression>),
+    SubroutineCall(SubroutineCall),
+    Grouped(Box<Expression>),
+    Unary(UnaryOperation, Box<Term>),
 }
 
 // --- Operations ---
@@ -96,7 +96,7 @@ impl fmt::Display for KeywordConstant {
     }
 }
 
-impl fmt::Display for Term<'_> {
+impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IntegerConstant(integer) => write!(f, "{integer}"),
@@ -104,7 +104,7 @@ impl fmt::Display for Term<'_> {
             Self::KeywordConstant(keyword) => write!(f, "{keyword}"),
             Self::Variable(variable) => write!(f, "{variable}"),
             Self::ArrayAccess(name, index) => write!(f, "{name}[{index}]"),
-            Self::SubroutineCall(call) => match call.receiver {
+            Self::SubroutineCall(call) => match &call.receiver {
                 Some(receiver) => write!(f, "{receiver}.{}(...)", call.name),
                 None => write!(f, "{}(...)", call.name),
             },
@@ -114,7 +114,7 @@ impl fmt::Display for Term<'_> {
     }
 }
 
-impl fmt::Display for Expression<'_> {
+impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.term)?;
         for (operation, term) in &self.operations {

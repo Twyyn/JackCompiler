@@ -9,7 +9,7 @@ pub struct Lexer<'src> {
     pos: usize,
     line: u32,
     column: u16,
-    tokens: Vec<Token<'src>>,
+    tokens: Vec<Token>,
 }
 
 impl<'src> Lexer<'src> {
@@ -35,7 +35,7 @@ impl<'src> Lexer<'src> {
     /// such as an invalid symbol, unterminated string literal, integer that
     /// cannot be parsed or is out of the allowed range, or any other
     /// malformed token.
-    pub fn tokenize(mut self) -> Result<Vec<Token<'src>>, LexerError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token>, LexerError> {
         while !self.is_at_end() {
             self.scan_token()?;
         }
@@ -80,7 +80,7 @@ impl<'src> Lexer<'src> {
             return Err(LexerError::UnterminatedString);
         }
 
-        self.add_token(TokenKind::StringConstant(lexeme), start);
+        self.add_token(TokenKind::StringConstant(lexeme.into()), start);
         Ok(())
     }
 
@@ -105,7 +105,7 @@ impl<'src> Lexer<'src> {
 
         let kind = match Keyword::from_str(lexeme) {
             Ok(keyword) => TokenKind::Keyword(keyword),
-            Err(()) => TokenKind::Identifier(lexeme),
+            Err(()) => TokenKind::Identifier(lexeme.into()),
         };
 
         self.add_token(kind, start);
@@ -147,7 +147,7 @@ impl<'src> Lexer<'src> {
     // --- Token Helper ---
 
     #[allow(clippy::cast_possible_truncation)]
-    fn add_token(&mut self, kind: TokenKind<'src>, start: usize) {
+    fn add_token(&mut self, kind: TokenKind, start: usize) {
         let len = if matches!(kind, TokenKind::Eof) {
             0
         } else {

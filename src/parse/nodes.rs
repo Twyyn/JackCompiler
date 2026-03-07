@@ -3,25 +3,25 @@ use super::{Expression, Statement};
 // --- Type(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Kind<'src> {
+pub enum Kind {
     Int,
     Char,
     Boolean,
-    Class(&'src str),
+    Class(Box<str>),
 }
 // --- Return Type(Kind) ---
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReturnKind<'src> {
+pub enum ReturnKind {
     Void,
-    Kind(Kind<'src>),
+    Kind(Kind),
 }
 
 // --- Class ---
 #[derive(Debug)]
-pub struct Class<'src> {
-    pub name: &'src str,
-    pub variables: Vec<ClassVarDec<'src>>,
-    pub subroutines: Vec<SubroutineDec<'src>>,
+pub struct Class {
+    pub name: Box<str>,
+    pub variables: Vec<ClassVarDec>,
+    pub subroutines: Vec<SubroutineDec>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,10 +31,10 @@ pub enum ClassVarKind {
 }
 // --- Class Variable Declaration ---
 #[derive(Debug)]
-pub struct ClassVarDec<'src> {
+pub struct ClassVarDec {
     pub var_kind: ClassVarKind,
-    pub kind: Kind<'src>,
-    pub names: Vec<&'src str>,
+    pub kind: Kind,
+    pub names: Vec<Box<str>>,
 }
 
 // --- Subroutine Type(Kind)---
@@ -47,38 +47,38 @@ pub enum SubroutineKind {
 
 // --- Subroutine Declaration ---
 #[derive(Debug)]
-pub struct SubroutineDec<'src> {
+pub struct SubroutineDec {
     pub kind: SubroutineKind,
-    pub return_kind: ReturnKind<'src>,
-    pub name: &'src str,
-    pub parameters: Vec<Parameter<'src>>,
-    pub body: SubroutineBody<'src>,
+    pub return_kind: ReturnKind,
+    pub name: Box<str>,
+    pub parameters: Vec<Parameter>,
+    pub body: SubroutineBody,
 }
 // --- Subroutine Call Declaration ---
 #[derive(Debug, Clone, PartialEq)]
-pub struct SubroutineCall<'src> {
-    pub name: &'src str,
-    pub receiver: Option<&'src str>,
-    pub arguments: Vec<Expression<'src>>,
+pub struct SubroutineCall {
+    pub name: Box<str>,
+    pub receiver: Option<Box<str>>,
+    pub arguments: Vec<Expression>,
 }
 
 // --- Parameter/Argument ---
 #[derive(Debug)]
-pub struct Parameter<'src> {
-    pub kind: Kind<'src>,
-    pub name: &'src str,
+pub struct Parameter {
+    pub kind: Kind,
+    pub name: Box<str>,
 }
 
 // --- Subroutine Body ---
 #[derive(Debug)]
-pub struct SubroutineBody<'src> {
-    pub variables: Vec<VarDec<'src>>,
-    pub statements: Vec<Statement<'src>>,
+pub struct SubroutineBody {
+    pub variables: Vec<VarDec>,
+    pub statements: Vec<Statement>,
 }
 
 // --- Variable Declaration ---
 #[derive(Debug)]
-pub struct VarDec<'src> {
-    pub kind: Kind<'src>,
-    pub names: Vec<&'src str>,
+pub struct VarDec {
+    pub kind: Kind,
+    pub names: Vec<Box<str>>,
 }

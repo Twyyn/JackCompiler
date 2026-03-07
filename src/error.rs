@@ -4,33 +4,33 @@ use crate::parse::ParseError;
 use crate::token::LexerError;
 
 #[derive(Debug)]
-pub enum CompilerError<'e> {
+pub enum CompilerError {
     InvalidPath,
     NoJackFiles,
     Io(std::io::Error),
     Lexer(LexerError),
-    Parse(ParseError<'e>),
+    Parse(ParseError),
 }
 
-impl From<std::io::Error> for CompilerError<'_> {
+impl From<std::io::Error> for CompilerError {
     fn from(err: std::io::Error) -> Self {
         Self::Io(err)
     }
 }
 
-impl From<LexerError> for CompilerError<'_> {
+impl From<LexerError> for CompilerError {
     fn from(err: LexerError) -> Self {
         Self::Lexer(err)
     }
 }
 
-impl<'e> From<ParseError<'e>> for CompilerError<'e> {
-    fn from(err: ParseError<'e>) -> Self {
+impl From<ParseError> for CompilerError {
+    fn from(err: ParseError) -> Self {
         Self::Parse(err)
     }
 }
 
-impl fmt::Display for CompilerError<'_> {
+impl fmt::Display for CompilerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidPath => write!(f, "path is not a valid .jack file or directory"),

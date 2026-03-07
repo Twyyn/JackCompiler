@@ -8,8 +8,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::CompilerError;
-use crate::lexer::Lexer;
-use crate::parser::Parser;
+// use crate::lexer::Lexer;
+// use crate::parse::Class;
+// use crate::parser::Parser;
 
 pub const JACK_INT_MAX: u32 = 32767;
 
@@ -46,34 +47,29 @@ impl JackCompiler {
     ///
     /// Returns a `CompilerError` if the source path is invalid, no Jack files are found,
     /// or if there is an I/O error reading the source files.
-    pub fn new(source: &str) -> Result<Self, CompilerError<'_>> {
+    pub fn new(source: &str) -> Result<Self, CompilerError> {
         let source = Path::new(source);
 
-        let (jack_files, output_dir) = match source {
-            _ if source.is_dir() => {
-                let mut jack_files: Vec<PathBuf> = fs::read_dir(source)?
-                    .filter_map(|entry| {
-                        let path = entry.ok()?.path();
-                        Self::is_jack_file(&path).then_some(path)
-                    })
-                    .collect();
+        let (jack_files, output_dir) = if source.is_dir() {
+            let mut files: Vec<PathBuf> = fs::read_dir(source)?
+                .filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    Self::is_jack_file(&path).then_some(path)
+                })
+                .collect();
 
-                if jack_files.is_empty() {
-                    return Err(CompilerError::NoJackFiles);
-                }
-
-                jack_files.sort();
-                let output_dir = source;
-                (jack_files, output_dir)
+            if files.is_empty() {
+                return Err(CompilerError::NoJackFiles);
             }
+            files.sort();
 
-            _ if Self::is_jack_file(source) => {
-                let jack_files: Vec<PathBuf> = vec![source.into()];
-                let output_dir = source.parent().unwrap_or(Path::new("."));
-                (jack_files, output_dir)
-            }
-
-            _ => return Err(CompilerError::InvalidPath),
+            (files, source)
+        } else if Self::is_jack_file(source) {
+            let files: Vec<PathBuf> = vec![source.into()];
+            let output_dir = source.parent().unwrap_or(Path::new("."));
+            (files, output_dir)
+        } else {
+            return Err(CompilerError::InvalidPath);
         };
 
         let source_files = jack_files
@@ -82,9 +78,11 @@ impl JackCompiler {
                 let filename = path.file_name().ok_or(CompilerError::InvalidPath)?;
                 let name = path
                     .file_stem()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned();
+                    .ok_or(CompilerError::InvalidPath)?
+                    .to_str()
+                    .ok_or(CompilerError::InvalidPath)?
+                    .to_owned();
+
                 let contents = fs::read_to_string(&path).map_err(CompilerError::Io)?;
                 let output_path = output_dir.join(filename).with_extension("vm");
                 Ok(SourceFile::new(name, contents, output_path))
@@ -94,15 +92,16 @@ impl JackCompiler {
         Ok(Self { source_files })
     }
 
-    pub fn parse(&self) -> Result<(), CompilerError> {
-        for file in &self.source_files {
-            let tokens = Lexer::new(&file.contents).tokenize()?;
-            println!("{}: {tokens:#?}", file.name);
-            let classes = Parser::new(tokens).parse()?;
-            println!("{classes:#?}");
-        }
-        Ok(())
-    }
+    // pub fn parse(&self) -> Result<Vec<Class>, CompilerError> {
+    //     let mut classes = Vec::new();
+    //     for file in &self.source_files {
+    //         let tokens = Lexer::new(&file.contents).tokenize()?;
+    //         let mut parsed = Parser::new(tokens).parse()?;
+    //         classes.append(&mut parsed);
+    //     }
+    //     println!("{classes:?}");
+    //     Ok(classes)
+    // }
 
     // --- Filesystem Helpers ---
 

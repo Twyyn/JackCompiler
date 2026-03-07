@@ -2,19 +2,19 @@ use std::fmt;
 
 use super::{Keyword, Symbol};
 
-pub type Identifier<'a> = &'a str;
+pub type Identifier = Box<str>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum TokenKind<'a> {
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenKind {
     Keyword(Keyword),
     Symbol(Symbol),
     IntegerConstant(u16),
-    StringConstant(&'a str),
-    Identifier(Identifier<'a>),
+    StringConstant(Box<str>),
+    Identifier(Identifier),
     Eof,
 }
 
-impl TokenKind<'_> {
+impl TokenKind {
     #[must_use]
     pub fn is_keyword(&self) -> bool {
         matches!(self, Self::Keyword(_))
@@ -31,7 +31,7 @@ impl TokenKind<'_> {
     }
 }
 
-impl fmt::Display for TokenKind<'_> {
+impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keyword(_) => write!(f, "keyword"),

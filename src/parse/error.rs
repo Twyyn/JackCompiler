@@ -3,13 +3,13 @@ use std::fmt;
 use crate::token::Token;
 
 #[derive(Debug)]
-pub enum ParseError<'src> {
-    InvalidToken(Token<'src>),
-    UnexpectedToken(Token<'src>),
+pub enum ParseError {
+    InvalidToken(Token),
+    UnexpectedToken(Token),
     UnexpectedEof,
 }
 
-impl fmt::Display for ParseError<'_> {
+impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidToken(token) => write!(f, "invalid token{token}"),

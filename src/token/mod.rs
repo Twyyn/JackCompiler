@@ -12,26 +12,26 @@ use std::fmt;
 
 // --- Token ---
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Token<'a> {
-    pub kind: TokenKind<'a>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    pub kind: TokenKind,
     pub span: Span,
 }
 
-impl<'src> Token<'src> {
+impl Token {
     #[must_use]
-    pub fn new(kind: TokenKind<'src>, span: Span) -> Self {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
         Self { kind, span }
     }
 
     #[must_use]
-    pub fn lexeme(&self, source: &'src str) -> &'src str {
+    pub fn lexeme<'src>(&self, source: &'src str) -> &'src str {
         let start = self.span.offset as usize;
         &source[start..start + self.span.len as usize]
     }
 }
 
-impl fmt::Display for Token<'_> {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind)
     }

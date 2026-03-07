@@ -6,10 +6,10 @@ fn main() {
         std::process::exit(1);
     });
 
-    let compiler = JackCompiler::new(&source).unwrap_or_else(|e| {
+    let _compiler = JackCompiler::new(&source).unwrap_or_else(|e| {
         eprintln!("{e}");
         std::process::exit(1);
     });
 
-    compiler.parse();
+    // let _ = compiler.parse();
 }
