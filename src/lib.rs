@@ -14,7 +14,6 @@ use crate::parser::Parser;
 pub const JACK_INT_MAX: u32 = 32767;
 
 // --- Source File ---
-
 #[derive(Debug)]
 pub struct SourceFile {
     pub name: String,
@@ -47,7 +46,7 @@ impl JackCompiler {
     ///
     /// Returns a `CompilerError` if the source path is invalid, no Jack files are found,
     /// or if there is an I/O error reading the source files.
-    pub fn new(source: &str) -> Result<Self, CompilerError> {
+    pub fn new(source: &str) -> Result<Self, CompilerError<'_>> {
         let source = Path::new(source);
 
         let (jack_files, output_dir) = match source {
@@ -95,19 +94,14 @@ impl JackCompiler {
         Ok(Self { source_files })
     }
 
-    pub fn tokenize(&self) {
+    pub fn parse(&self) -> Result<(), CompilerError> {
         for file in &self.source_files {
-            let lexer = Lexer::new(&file.contents).tokenize();
-            println!("{}\n{lexer:?}\n{}", file.name, file.output_path.display());
+            let tokens = Lexer::new(&file.contents).tokenize()?;
+            println!("{}: {tokens:#?}", file.name);
+            let classes = Parser::new(tokens).parse()?;
+            println!("{classes:#?}");
         }
-    }
-
-    pub fn parse(&self) {
-        for file in &self.source_files {
-            let lexer = Lexer::new(&file.contents).tokenize();
-            let mut parser = Parser::new(lexer.unwrap());
-            println!("{:#?}", parser.parse_statement());
-        }
+        Ok(())
     }
 
     // --- Filesystem Helpers ---

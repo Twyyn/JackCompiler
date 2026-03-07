@@ -3,7 +3,7 @@ use std::fmt;
 use crate::JACK_INT_MAX;
 
 #[derive(Debug)]
-pub enum TokenError {
+pub enum LexerError {
     /// Integer exceeds Jack's int max of 32767.
     IntegerOutOfRange(u32),
     /// Integer could not be parsed.
@@ -12,7 +12,7 @@ pub enum TokenError {
     UnterminatedString,
 }
 
-impl fmt::Display for TokenError {
+impl fmt::Display for LexerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IntegerOutOfRange(int) => write!(

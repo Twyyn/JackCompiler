@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use crate::token::{Keyword, Span, Symbol, Token, TokenError, TokenKind};
 use crate::JACK_INT_MAX;
+use crate::token::{Keyword, LexerError, Span, Symbol, Token, TokenKind};
 
 pub struct Lexer<'src> {
     source: &'src str,
@@ -35,7 +35,7 @@ impl<'src> Lexer<'src> {
     /// such as an invalid symbol, unterminated string literal, integer that
     /// cannot be parsed or is out of the allowed range, or any other
     /// malformed token.
-    pub fn tokenize(mut self) -> Result<Vec<Token<'src>>, TokenError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token<'src>>, LexerError> {
         while !self.is_at_end() {
             self.scan_token()?;
         }
@@ -46,7 +46,7 @@ impl<'src> Lexer<'src> {
     // --- Scanner Dispatch ---
 
     #[rustfmt::skip]
-    fn scan_token(&mut self) -> Result<(), TokenError> {
+    fn scan_token(&mut self) -> Result<(), LexerError> {
         let start = self.pos;
         let c = self.advance();
 
@@ -69,7 +69,7 @@ impl<'src> Lexer<'src> {
 
     // --- Scanner Helpers ---
 
-    fn scan_string(&mut self, start: usize) -> Result<(), TokenError> {
+    fn scan_string(&mut self, start: usize) -> Result<(), LexerError> {
         let string_start = self.pos;
         self.advance_while(|b| b != b'"');
         let lexeme = self.slice(string_start, self.pos);
@@ -77,7 +77,7 @@ impl<'src> Lexer<'src> {
         if !self.is_at_end() && self.peek() == b'"' {
             self.advance();
         } else {
-            return Err(TokenError::UnterminatedString);
+            return Err(LexerError::UnterminatedString);
         }
 
         self.add_token(TokenKind::StringConstant(lexeme), start);
@@ -85,14 +85,14 @@ impl<'src> Lexer<'src> {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn scan_integer(&mut self, start: usize) -> Result<(), TokenError> {
+    fn scan_integer(&mut self, start: usize) -> Result<(), LexerError> {
         self.advance_while(|b| b.is_ascii_digit());
         let lexeme = self.slice(start, self.pos);
 
         let value = match lexeme.parse::<u32>() {
             Ok(n) if n <= JACK_INT_MAX => n as u16,
-            Ok(n) => return Err(TokenError::IntegerOutOfRange(n)),
-            Err(e) => return Err(TokenError::InvalidInteger(e.to_string())),
+            Ok(n) => return Err(LexerError::IntegerOutOfRange(n)),
+            Err(e) => return Err(LexerError::InvalidInteger(e.to_string())),
         };
 
         self.add_token(TokenKind::IntegerConstant(value), start);
@@ -111,12 +111,12 @@ impl<'src> Lexer<'src> {
         self.add_token(kind, start);
     }
 
-    fn scan_symbol(&mut self, start: usize) -> Result<(), TokenError> {
+    fn scan_symbol(&mut self, start: usize) -> Result<(), LexerError> {
         let c = self.source_as_bytes[self.pos - 1] as char;
 
         let kind = match Symbol::from_char(c) {
             Some(symbol) => TokenKind::Symbol(symbol),
-            None => return Err(TokenError::InvalidSymbol(c.to_string())),
+            None => return Err(LexerError::InvalidSymbol(c.to_string())),
         };
 
         self.add_token(kind, start);

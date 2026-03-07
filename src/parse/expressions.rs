@@ -1,9 +1,7 @@
-// --- Expression ---
-
+use super::SubroutineCall;
 use std::fmt;
 
-use super::SubroutineCall;
-
+// --- Expression ---
 #[derive(Debug, Clone, PartialEq)]
 pub struct Expression<'src> {
     pub term: Term<'src>,
@@ -11,13 +9,13 @@ pub struct Expression<'src> {
 }
 
 impl<'src> Expression<'src> {
+    #[must_use]
     pub fn new(term: Term<'src>, operations: Vec<(Operation, Term<'src>)>) -> Self {
         Self { term, operations }
     }
 }
 
 // --- Term ---
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'src> {
     IntegerConstant(u16),
@@ -25,13 +23,12 @@ pub enum Term<'src> {
     KeywordConstant(KeywordConstant),
     Variable(&'src str),
     ArrayAccess(&'src str, Box<Expression<'src>>),
-    SubroutineCall(SubroutineCall<'src>), // Fix 5: was missing from enum
+    SubroutineCall(SubroutineCall<'src>),
     Grouped(Box<Expression<'src>>),
     Unary(UnaryOperation, Box<Term<'src>>),
 }
 
 // --- Operations ---
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operation {
     Add,
@@ -52,7 +49,6 @@ pub enum UnaryOperation {
 }
 
 // --- Keyword Constant ---
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeywordConstant {
     True,
@@ -80,7 +76,6 @@ impl fmt::Display for Operation {
 
 impl fmt::Display for UnaryOperation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Fix 7: Ok(write!(...)?) → write!(...)
         let c = match self {
             Self::Minus => '-',
             Self::Tilde => '~',
@@ -91,7 +86,6 @@ impl fmt::Display for UnaryOperation {
 
 impl fmt::Display for KeywordConstant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Fix 7: Ok(write!(...)?) → write!(...)
         let s = match self {
             Self::True => "true",
             Self::False => "false",
@@ -110,7 +104,6 @@ impl fmt::Display for Term<'_> {
             Self::KeywordConstant(keyword) => write!(f, "{keyword}"),
             Self::Variable(variable) => write!(f, "{variable}"),
             Self::ArrayAccess(name, index) => write!(f, "{name}[{index}]"),
-            // Fix 5: SubroutineCall was missing from Display
             Self::SubroutineCall(call) => match call.receiver {
                 Some(receiver) => write!(f, "{receiver}.{}(...)", call.name),
                 None => write!(f, "{}(...)", call.name),
@@ -123,10 +116,9 @@ impl fmt::Display for Term<'_> {
 
 impl fmt::Display for Expression<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Fix 3: operations is now Vec, fix Display to format properly
         write!(f, "{}", self.term)?;
-        for (op, term) in &self.operations {
-            write!(f, " {op} {term}")?;
+        for (operation, term) in &self.operations {
+            write!(f, " {operation} {term}")?;
         }
         Ok(())
     }

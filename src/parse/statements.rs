@@ -1,7 +1,6 @@
 use super::{Expression, SubroutineCall};
 
 // --- Statements ---
-
 #[derive(Debug)]
 pub enum Statement<'src> {
     Let(LetStatement<'src>),
@@ -12,8 +11,6 @@ pub enum Statement<'src> {
 }
 
 // --- Let ---
-
-// Fix 4: private fields → public for consistency with the rest of the AST
 #[derive(Debug)]
 pub struct LetStatement<'src> {
     pub name: &'src str,
@@ -22,6 +19,7 @@ pub struct LetStatement<'src> {
 }
 
 impl<'src> LetStatement<'src> {
+    #[must_use]
     pub fn new(
         name: &'src str,
         index: Option<Expression<'src>>,
@@ -36,66 +34,63 @@ impl<'src> LetStatement<'src> {
 }
 
 // --- If ---
-
 #[derive(Debug)]
 pub struct IfStatement<'src> {
     pub condition: Expression<'src>,
-    pub statements: Vec<Statement<'src>>,
-    pub else_statements: Option<Vec<Statement<'src>>>,
+    pub if_body: Vec<Statement<'src>>,
+    pub else_body: Option<Vec<Statement<'src>>>,
 }
 
 impl<'src> IfStatement<'src> {
+    #[must_use]
     pub fn new(
         condition: Expression<'src>,
-        statements: Vec<Statement<'src>>,
-        else_statements: Option<Vec<Statement<'src>>>,
+        if_body: Vec<Statement<'src>>,
+        else_body: Option<Vec<Statement<'src>>>,
     ) -> Self {
         Self {
             condition,
-            statements,
-            else_statements,
+            if_body,
+            else_body,
         }
     }
 }
 
 // --- While ---
-
 #[derive(Debug)]
 pub struct WhileStatement<'src> {
     pub condition: Expression<'src>,
-    pub statements: Vec<Statement<'src>>,
+    pub body: Vec<Statement<'src>>,
 }
 
 impl<'src> WhileStatement<'src> {
-    pub fn new(condition: Expression<'src>, statements: Vec<Statement<'src>>) -> Self {
-        Self {
-            condition,
-            statements,
-        }
+    #[must_use]
+    pub fn new(condition: Expression<'src>, body: Vec<Statement<'src>>) -> Self {
+        Self { condition, body }
     }
 }
 
 // --- Do ---
-
 #[derive(Debug)]
 pub struct DoStatement<'src> {
     pub subroutine: SubroutineCall<'src>,
 }
 
 impl<'src> DoStatement<'src> {
+    #[must_use]
     pub fn new(subroutine: SubroutineCall<'src>) -> Self {
         Self { subroutine }
     }
 }
 
 // --- Return ---
-
 #[derive(Debug)]
 pub struct ReturnStatement<'src> {
     pub expression: Option<Expression<'src>>,
 }
 
 impl<'src> ReturnStatement<'src> {
+    #[must_use]
     pub fn new(expression: Option<Expression<'src>>) -> Self {
         Self { expression }
     }

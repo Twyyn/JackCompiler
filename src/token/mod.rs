@@ -3,7 +3,7 @@ mod keyword;
 mod kind;
 mod symbol;
 
-pub use error::TokenError;
+pub use error::LexerError;
 pub use keyword::Keyword;
 pub use kind::{Identifier, TokenKind};
 pub use symbol::Symbol;

@@ -1,6 +1,6 @@
 use super::{Expression, Statement};
 
-// --- Types ---
+// --- Type(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Kind<'src> {
@@ -9,7 +9,7 @@ pub enum Kind<'src> {
     Boolean,
     Class(&'src str),
 }
-
+// --- Return Type(Kind) ---
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReturnKind<'src> {
     Void,
@@ -17,7 +17,6 @@ pub enum ReturnKind<'src> {
 }
 
 // --- Class ---
-
 #[derive(Debug)]
 pub struct Class<'src> {
     pub name: &'src str,
@@ -30,7 +29,7 @@ pub enum ClassVarKind {
     Static,
     Field,
 }
-
+// --- Class Variable Declaration ---
 #[derive(Debug)]
 pub struct ClassVarDec<'src> {
     pub var_kind: ClassVarKind,
@@ -38,8 +37,7 @@ pub struct ClassVarDec<'src> {
     pub names: Vec<&'src str>,
 }
 
-// --- Subroutine ---
-
+// --- Subroutine Type(Kind)---
 #[derive(Debug, Clone, PartialEq)]
 pub enum SubroutineKind {
     Constructor,
@@ -47,6 +45,7 @@ pub enum SubroutineKind {
     Method,
 }
 
+// --- Subroutine Declaration ---
 #[derive(Debug)]
 pub struct SubroutineDec<'src> {
     pub kind: SubroutineKind,
@@ -55,7 +54,7 @@ pub struct SubroutineDec<'src> {
     pub parameters: Vec<Parameter<'src>>,
     pub body: SubroutineBody<'src>,
 }
-
+// --- Subroutine Call Declaration ---
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubroutineCall<'src> {
     pub name: &'src str,
@@ -63,20 +62,21 @@ pub struct SubroutineCall<'src> {
     pub arguments: Vec<Expression<'src>>,
 }
 
+// --- Parameter/Argument ---
 #[derive(Debug)]
 pub struct Parameter<'src> {
     pub kind: Kind<'src>,
     pub name: &'src str,
 }
 
+// --- Subroutine Body ---
 #[derive(Debug)]
 pub struct SubroutineBody<'src> {
     pub variables: Vec<VarDec<'src>>,
     pub statements: Vec<Statement<'src>>,
 }
 
-// --- Variables ---
-
+// --- Variable Declaration ---
 #[derive(Debug)]
 pub struct VarDec<'src> {
     pub kind: Kind<'src>,
