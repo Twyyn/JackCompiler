@@ -1,3 +1,5 @@
+use crate::lexer::token::r#type::Identifier;
+
 use super::{Expression, SubroutineCall};
 
 // --- Statements ---
@@ -13,7 +15,7 @@ pub enum Statement {
 // --- Let ---
 #[derive(Debug)]
 pub struct LetStatement {
-    pub name: Box<str>,
+    pub name: Identifier,
     pub index: Option<Expression>,
     pub expression: Expression,
 }

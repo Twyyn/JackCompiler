@@ -1,12 +1,10 @@
-mod error;
-mod keyword;
-mod kind;
-mod symbol;
+pub mod keyword;
+pub mod symbol;
+pub mod r#type;
 
-pub use error::LexerError;
 pub use keyword::Keyword;
-pub use kind::{Identifier, TokenKind};
 pub use symbol::Symbol;
+pub use r#type::TokenTypeKind;
 
 use std::fmt;
 
@@ -14,14 +12,17 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    pub kind: TokenKind,
+    pub token_type_kind: TokenTypeKind,
     pub span: Span,
 }
 
 impl Token {
     #[must_use]
-    pub fn new(kind: TokenKind, span: Span) -> Self {
-        Self { kind, span }
+    pub fn new(token_type_kind: TokenTypeKind, span: Span) -> Self {
+        Self {
+            token_type_kind,
+            span,
+        }
     }
 
     #[must_use]
@@ -33,7 +34,7 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
+        write!(f, "{}", self.token_type_kind)
     }
 }
 

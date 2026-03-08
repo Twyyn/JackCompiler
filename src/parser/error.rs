@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::token::Token;
+use crate::lexer::token::Token;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -12,9 +12,11 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidToken(token) => write!(f, "invalid token{token}"),
+            Self::InvalidToken(token) => write!(f, "invalid token {token}"),
             Self::UnexpectedToken(token) => write!(f, "unexpected token {token}"),
             Self::UnexpectedEof => write!(f, "Unexpected EOF"),
         }
     }
 }
+
+impl std::error::Error for ParseError {}

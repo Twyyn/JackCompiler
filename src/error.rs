@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::parse::ParseError;
-use crate::token::LexerError;
+use crate::lexer::LexerError;
+use crate::parser::error::ParseError;
 
 #[derive(Debug)]
 pub enum CompilerError {
@@ -41,3 +41,5 @@ impl fmt::Display for CompilerError {
         }
     }
 }
+
+impl std::error::Error for CompilerError {}

@@ -1,12 +1,17 @@
+pub mod error;
+pub mod token;
+
+pub use error::LexerError;
+
 use std::str::FromStr;
 
 use crate::JACK_INT_MAX;
-use crate::token::{Keyword, LexerError, Span, Symbol, Token, TokenKind};
+use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenTypeKind};
 
 pub struct Lexer<'src> {
     source: &'src str,
     source_as_bytes: &'src [u8],
-    pos: usize,
+    position: usize,
     line: u32,
     column: u16,
     tokens: Vec<Token>,
@@ -18,7 +23,7 @@ impl<'src> Lexer<'src> {
         Self {
             source,
             source_as_bytes: source.as_bytes(),
-            pos: 0,
+            position: 0,
             line: 1,
             column: 1,
             tokens: Vec::new(),
@@ -39,29 +44,30 @@ impl<'src> Lexer<'src> {
         while !self.is_at_end() {
             self.scan_token()?;
         }
-        self.add_token(TokenKind::Eof, self.pos);
+        self.add_token(TokenTypeKind::Eof, self.position, self.column);
+
         Ok(self.tokens)
     }
 
     // --- Scanner Dispatch ---
 
-    #[rustfmt::skip]
     fn scan_token(&mut self) -> Result<(), LexerError> {
-        let start = self.pos;
+        let start = self.position;
+        let column = self.column;
         let c = self.advance();
 
         match c {
             b'/' if self.peek() == b'*' || self.peek() == b'/' => {
-                self.skip_comment();
+                self.skip_comment()?;
             }
             _ if c.is_ascii_whitespace() => {
                 self.advance_while(|b| b.is_ascii_whitespace());
             }
 
-            b'"'                               => self.scan_string(start)?,
-            b'0'..=b'9'                        => self.scan_integer(start)?,
-            b'a'..=b'z' | b'A'..=b'Z' | b'_'  => self.scan_word(start),
-            _                                  => self.scan_symbol(start)?,
+            b'"' => self.scan_string(start, column)?,
+            b'0'..=b'9' => self.scan_integer(start, column)?,
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.scan_word(start, column),
+            _ => self.scan_symbol(c, start, column)?,
         }
 
         Ok(())
@@ -69,10 +75,10 @@ impl<'src> Lexer<'src> {
 
     // --- Scanner Helpers ---
 
-    fn scan_string(&mut self, start: usize) -> Result<(), LexerError> {
-        let string_start = self.pos;
+    fn scan_string(&mut self, start: usize, column: u16) -> Result<(), LexerError> {
+        let string_start = self.position;
         self.advance_while(|b| b != b'"');
-        let lexeme = self.slice(string_start, self.pos);
+        let lexeme = self.slice(string_start, self.position);
 
         if !self.is_at_end() && self.peek() == b'"' {
             self.advance();
@@ -80,14 +86,14 @@ impl<'src> Lexer<'src> {
             return Err(LexerError::UnterminatedString);
         }
 
-        self.add_token(TokenKind::StringConstant(lexeme.into()), start);
+        self.add_token(TokenTypeKind::StringConstant(lexeme.into()), start, column);
         Ok(())
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn scan_integer(&mut self, start: usize) -> Result<(), LexerError> {
+    fn scan_integer(&mut self, start: usize, column: u16) -> Result<(), LexerError> {
         self.advance_while(|b| b.is_ascii_digit());
-        let lexeme = self.slice(start, self.pos);
+        let lexeme = self.slice(start, self.position);
 
         let value = match lexeme.parse::<u32>() {
             Ok(n) if n <= JACK_INT_MAX => n as u16,
@@ -95,100 +101,93 @@ impl<'src> Lexer<'src> {
             Err(e) => return Err(LexerError::InvalidInteger(e.to_string())),
         };
 
-        self.add_token(TokenKind::IntegerConstant(value), start);
+        self.add_token(TokenTypeKind::IntegerConstant(value), start, column);
         Ok(())
     }
 
-    fn scan_word(&mut self, start: usize) {
+    fn scan_word(&mut self, start: usize, column: u16) {
         self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
-        let lexeme = self.slice(start, self.pos);
+        let lexeme = self.slice(start, self.position);
 
         let kind = match Keyword::from_str(lexeme) {
-            Ok(keyword) => TokenKind::Keyword(keyword),
-            Err(()) => TokenKind::Identifier(lexeme.into()),
+            Ok(keyword) => TokenTypeKind::Keyword(keyword),
+            Err(()) => TokenTypeKind::Identifier(lexeme.into()),
         };
 
-        self.add_token(kind, start);
+        self.add_token(kind, start, column);
     }
 
-    fn scan_symbol(&mut self, start: usize) -> Result<(), LexerError> {
-        let c = self.source_as_bytes[self.pos - 1] as char;
-
-        let kind = match Symbol::from_char(c) {
-            Some(symbol) => TokenKind::Symbol(symbol),
-            None => return Err(LexerError::InvalidSymbol(c.to_string())),
+    fn scan_symbol(&mut self, c: u8, start: usize, column: u16) -> Result<(), LexerError> {
+        let kind = match Symbol::from_char(c as char) {
+            Some(symbol) => TokenTypeKind::Symbol(symbol),
+            None => return Err(LexerError::InvalidSymbol((c as char).to_string())),
         };
 
-        self.add_token(kind, start);
+        self.add_token(kind, start, column);
         Ok(())
     }
 
     // --- Comments ---
 
-    fn skip_comment(&mut self) {
-        match self.peek() {
-            // Block comment
-            b'*' => {
-                self.advance(); // Skip '*'
-                while !self.is_at_end() {
-                    if self.peek() == b'*' && self.peek_next() == b'/' {
-                        self.advance(); // Skip '*'
-                        self.advance(); // Skip '/'
-                        break;
-                    }
-                    self.advance();
+    fn skip_comment(&mut self) -> Result<(), LexerError> {
+        if self.peek() == b'*' {
+            self.advance(); // Skip '*'
+            while !self.is_at_end() {
+                if self.peek() == b'*' && self.peek_next() == b'/' {
+                    self.advance(); // Skip '*'
+                    self.advance(); // Skip '/'
+                    return Ok(());
                 }
+                self.advance();
             }
-            // Inline comment
-            _ => self.advance_while(|b| b != b'\n'),
+
+            Err(LexerError::UnterminatedComment)
+        } else {
+            self.advance_while(|b| b != b'\n');
+            Ok(())
         }
     }
-
     // --- Token Helper ---
 
     #[allow(clippy::cast_possible_truncation)]
-    fn add_token(&mut self, kind: TokenKind, start: usize) {
-        let len = if matches!(kind, TokenKind::Eof) {
+    fn add_token(&mut self, token_type_kind: TokenTypeKind, start: usize, column: u16) {
+        let len = if matches!(token_type_kind, TokenTypeKind::Eof) {
             0
         } else {
-            self.pos - start
+            self.position - start
         };
 
-        let span = Span::new(
-            start as u32,
-            len as u16,
-            self.line,
-            self.column.saturating_sub(len as u16),
-        );
-
-        self.tokens.push(Token::new(kind, span));
+        self.tokens.push(Token::new(
+            token_type_kind,
+            Span::new(start as u32, len as u16, self.line, column),
+        ));
     }
 
     // --- Byte Navigation Helpers ---
 
     fn is_at_end(&self) -> bool {
-        self.pos >= self.source_as_bytes.len()
+        self.position >= self.source_as_bytes.len()
     }
 
     fn peek(&self) -> u8 {
         if self.is_at_end() {
             b'\0'
         } else {
-            self.source_as_bytes[self.pos]
+            self.source_as_bytes[self.position]
         }
     }
 
     fn peek_next(&self) -> u8 {
-        if self.pos + 1 >= self.source_as_bytes.len() {
+        if self.position + 1 >= self.source_as_bytes.len() {
             b'\0'
         } else {
-            self.source_as_bytes[self.pos + 1]
+            self.source_as_bytes[self.position + 1]
         }
     }
 
     fn advance(&mut self) -> u8 {
-        let current_byte = self.source_as_bytes[self.pos];
-        self.pos += 1;
+        let current_byte = self.source_as_bytes[self.position];
+        self.position += 1;
 
         if current_byte == b'\n' {
             self.line += 1;

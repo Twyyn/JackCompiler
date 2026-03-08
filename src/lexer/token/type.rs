@@ -5,33 +5,17 @@ use super::{Keyword, Symbol};
 pub type Identifier = Box<str>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenKind {
+#[non_exhaustive]
+pub enum TokenTypeKind {
     Keyword(Keyword),
     Symbol(Symbol),
     IntegerConstant(u16),
-    StringConstant(Box<str>),
+    StringConstant(Identifier),
     Identifier(Identifier),
     Eof,
 }
 
-impl TokenKind {
-    #[must_use]
-    pub fn is_keyword(&self) -> bool {
-        matches!(self, Self::Keyword(_))
-    }
-
-    #[must_use]
-    pub fn is_symbol(&self) -> bool {
-        matches!(self, Self::Symbol(_))
-    }
-
-    #[must_use]
-    pub fn is_identifier(&self) -> bool {
-        matches!(self, Self::Identifier(_))
-    }
-}
-
-impl fmt::Display for TokenKind {
+impl fmt::Display for TokenTypeKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keyword(_) => write!(f, "keyword"),

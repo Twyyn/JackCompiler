@@ -1,45 +1,47 @@
+use crate::lexer::token::r#type::Identifier;
+
 use super::{Expression, Statement};
 
 // --- Type(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Kind {
+pub enum TypeKind {
     Int,
     Char,
     Boolean,
-    Class(Box<str>),
+    Class(Identifier),
 }
 // --- Return Type(Kind) ---
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReturnKind {
+pub enum ReturnTypeKind {
     Void,
-    Kind(Kind),
+    TypeKind(TypeKind),
 }
 
 // --- Class ---
 #[derive(Debug)]
 pub struct Class {
-    pub name: Box<str>,
+    pub name: Identifier,
     pub variables: Vec<ClassVarDec>,
     pub subroutines: Vec<SubroutineDec>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ClassVarKind {
+pub enum ClassVarTypeKind {
     Static,
     Field,
 }
 // --- Class Variable Declaration ---
 #[derive(Debug)]
 pub struct ClassVarDec {
-    pub var_kind: ClassVarKind,
-    pub kind: Kind,
-    pub names: Vec<Box<str>>,
+    pub var_kind: ClassVarTypeKind,
+    pub type_kind: TypeKind,
+    pub names: Vec<Identifier>,
 }
 
 // --- Subroutine Type(Kind)---
 #[derive(Debug, Clone, PartialEq)]
-pub enum SubroutineKind {
+pub enum SubroutineTypeKind {
     Constructor,
     Function,
     Method,
@@ -48,25 +50,25 @@ pub enum SubroutineKind {
 // --- Subroutine Declaration ---
 #[derive(Debug)]
 pub struct SubroutineDec {
-    pub kind: SubroutineKind,
-    pub return_kind: ReturnKind,
-    pub name: Box<str>,
+    pub type_kind: SubroutineTypeKind,
+    pub return_type_kind: ReturnTypeKind,
+    pub name: Identifier,
     pub parameters: Vec<Parameter>,
     pub body: SubroutineBody,
 }
 // --- Subroutine Call Declaration ---
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubroutineCall {
-    pub name: Box<str>,
-    pub receiver: Option<Box<str>>,
+    pub name: Identifier,
+    pub receiver: Option<Identifier>,
     pub arguments: Vec<Expression>,
 }
 
 // --- Parameter/Argument ---
 #[derive(Debug)]
 pub struct Parameter {
-    pub kind: Kind,
-    pub name: Box<str>,
+    pub type_kind: TypeKind,
+    pub name: Identifier,
 }
 
 // --- Subroutine Body ---
@@ -79,6 +81,6 @@ pub struct SubroutineBody {
 // --- Variable Declaration ---
 #[derive(Debug)]
 pub struct VarDec {
-    pub kind: Kind,
-    pub names: Vec<Box<str>>,
+    pub type_kind: TypeKind,
+    pub names: Vec<Identifier>,
 }

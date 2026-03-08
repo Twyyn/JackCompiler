@@ -2,7 +2,9 @@ use std::fmt;
 
 use crate::JACK_INT_MAX;
 
+
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum LexerError {
     /// Integer exceeds Jack's int max of 32767.
     IntegerOutOfRange(u32),
@@ -10,6 +12,7 @@ pub enum LexerError {
     InvalidInteger(String),
     InvalidSymbol(String),
     UnterminatedString,
+    UnterminatedComment,
 }
 
 impl fmt::Display for LexerError {
@@ -17,11 +20,14 @@ impl fmt::Display for LexerError {
         match self {
             Self::IntegerOutOfRange(int) => write!(
                 f,
-                "Integer {int} exceeds Jack's maximum value of {JACK_INT_MAX}"
+                "integer {int} exceeds Jack's maximum value of {JACK_INT_MAX}"
             ),
-            Self::InvalidInteger(src) => write!(f, "Invalid integer {src}"),
+            Self::InvalidInteger(src) => write!(f, "invalid integer {src}"),
             Self::InvalidSymbol(src) => write!(f, "invalid symbol {src}"),
             Self::UnterminatedString => write!(f, "unterminated string literal"),
+            Self::UnterminatedComment => write!(f, "unterminated comment"),
         }
     }
 }
+
+impl std::error::Error for LexerError {}

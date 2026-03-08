@@ -6,10 +6,16 @@ fn main() {
         std::process::exit(1);
     });
 
-    let _compiler = JackCompiler::new(&source).unwrap_or_else(|e| {
+    let compiler = JackCompiler::from_path(&source).unwrap_or_else(|e| {
         eprintln!("{e}");
         std::process::exit(1);
     });
 
-    // let _ = compiler.parse();
+    match compiler.compile() {
+        Ok(classes) => println!("{classes:#?}"),
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    }
 }

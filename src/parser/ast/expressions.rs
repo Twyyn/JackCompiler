@@ -1,5 +1,8 @@
 use super::SubroutineCall;
+
 use std::fmt;
+
+use crate::lexer::token::r#type::Identifier;
 
 // --- Expression ---
 #[derive(Debug, Clone, PartialEq)]
@@ -17,19 +20,22 @@ impl Expression {
 
 // --- Term ---
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Term {
     IntegerConstant(u16),
-    StringConstant(Box<str>),
+    StringConstant(Identifier),
     KeywordConstant(KeywordConstant),
-    Variable(Box<str>),
-    ArrayAccess(Box<str>, Box<Expression>),
+    Variable(Identifier),
+    ArrayAccess(Identifier, Box<Expression>),
     SubroutineCall(SubroutineCall),
     Grouped(Box<Expression>),
     Unary(UnaryOperation, Box<Term>),
 }
 
 // --- Operations ---
+
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum Operation {
     Add,
     Sub,
@@ -42,14 +48,17 @@ pub enum Operation {
     Equal,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum UnaryOperation {
     Minus,
     Tilde,
 }
 
 // --- Keyword Constant ---
+
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum KeywordConstant {
     True,
     False,

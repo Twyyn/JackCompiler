@@ -1,7 +1,9 @@
 use std::fmt;
 use std::str::FromStr;
 
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Keyword {
     Class,
     Constructor,
