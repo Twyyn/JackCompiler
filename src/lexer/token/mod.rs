@@ -1,10 +1,10 @@
 pub mod keyword;
 pub mod symbol;
-pub mod r#type;
+pub mod data_type;
 
 pub use keyword::Keyword;
 pub use symbol::Symbol;
-pub use r#type::TokenTypeKind;
+pub use data_type::TokenType;
 
 use std::fmt;
 
@@ -12,15 +12,15 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    pub token_type_kind: TokenTypeKind,
+    pub token_type: TokenType,
     pub span: Span,
 }
 
 impl Token {
     #[must_use]
-    pub fn new(token_type_kind: TokenTypeKind, span: Span) -> Self {
+    pub fn new(token_type: TokenType, span: Span) -> Self {
         Self {
-            token_type_kind,
+            token_type,
             span,
         }
     }
@@ -34,7 +34,7 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.token_type_kind)
+        write!(f, "{}", self.token_type)
     }
 }
 

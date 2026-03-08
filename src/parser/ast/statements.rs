@@ -1,8 +1,9 @@
-use crate::lexer::token::r#type::Identifier;
+use crate::lexer::token::data_type::Identifier;
 
 use super::{Expression, SubroutineCall};
 
 // --- Statements ---
+
 #[derive(Debug)]
 pub enum Statement {
     Let(LetStatement),
@@ -13,6 +14,7 @@ pub enum Statement {
 }
 
 // --- Let ---
+
 #[derive(Debug)]
 pub struct LetStatement {
     pub name: Identifier,
@@ -21,6 +23,7 @@ pub struct LetStatement {
 }
 
 // --- If ---
+
 #[derive(Debug)]
 pub struct IfStatement {
     pub condition: Expression,
@@ -29,6 +32,7 @@ pub struct IfStatement {
 }
 
 // --- While ---
+
 #[derive(Debug)]
 pub struct WhileStatement {
     pub condition: Expression,
@@ -36,12 +40,14 @@ pub struct WhileStatement {
 }
 
 // --- Do ---
+
 #[derive(Debug)]
 pub struct DoStatement {
     pub subroutine_call: SubroutineCall,
 }
 
 // --- Return ---
+
 #[derive(Debug)]
 pub struct ReturnStatement {
     pub expression: Option<Expression>,
