@@ -1,12 +1,12 @@
 pub mod ast;
 pub mod error;
 
-use crate::lexer::token::data_type::Identifier;
+use crate::lexer::token::types::Identifier;
 use crate::lexer::token::{Keyword, Symbol, Token, TokenType};
 use crate::parser::ast::expressions::{Expression, KeywordConstant, Term, UnaryOperation};
-use crate::parser::ast::nodes::{
-    Class, ClassVarDec, ClassVarType, Parameter, ReturnType, SubroutineBody,
-    SubroutineCall, SubroutineDec, SubroutineType, Type, VarDec,
+use crate::parser::ast::declarations::{
+    Class, ClassVarDec, ClassVarType, Parameter, ReturnType, SubroutineBody, SubroutineCall,
+    SubroutineDec, SubroutineType, Type, VarDec,
 };
 use crate::parser::ast::statements::{
     DoStatement, IfStatement, LetStatement, ReturnStatement, Statement, WhileStatement,
@@ -105,6 +105,7 @@ impl Parser {
            TokenType::Keyword(Keyword::Char)    => Ok(Type::Char),
            TokenType::Keyword(Keyword::Boolean) => Ok(Type::Boolean),
            TokenType::Identifier(name)          => Ok(Type::Class(name)),
+
             _ => Err(ParseError::UnexpectedToken(token)),
         }
     }
@@ -115,7 +116,7 @@ impl Parser {
         let type_ = self.parse_type()?;
         let name = self.expect_identifier()?;
 
-        Ok(Parameter { type_, name })
+        Ok(Parameter { name, type_ })
     }
 
     fn parse_parameter_list(&mut self) -> Result<Vec<Parameter>, ParseError> {
@@ -335,7 +336,7 @@ impl Parser {
         }
         self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
 
-        Ok(VarDec { type_, names })
+        Ok(VarDec { names, type_ })
     }
 
     fn parse_class_var_dec(&mut self) -> Result<ClassVarDec, ParseError> {
@@ -355,9 +356,9 @@ impl Parser {
         self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
 
         Ok(ClassVarDec {
-            variable_type,
-            type_,
             names,
+            type_,
+            variable_type,
         })
     }
 

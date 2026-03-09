@@ -1,8 +1,7 @@
-use std::fmt;
-
-use crate::lexer::token::data_type::Identifier;
+use crate::lexer::token::types::Identifier;
 
 use super::{Expression, Statement};
+use super::{fmt, fmt_vector, pretty_list};
 
 // --- Class ---
 
@@ -25,6 +24,14 @@ pub struct ClassVarDec {
 pub enum ClassVarType {
     Static,
     Field,
+}
+
+// --- Variable Declaration ---
+
+#[derive(Debug)]
+pub struct VarDec {
+    pub names: Vec<Identifier>,
+    pub type_: Type,
 }
 
 // --- Subroutine Declaration ---
@@ -80,14 +87,6 @@ pub enum ReturnType {
     Type(Type),
 }
 
-// --- Variable Declaration ---
-
-#[derive(Debug)]
-pub struct VarDec {
-    pub type_: Type,
-    pub names: Vec<Identifier>,
-}
-
 // --- Parameter/Argument ---
 
 #[derive(Debug)]
@@ -98,99 +97,116 @@ pub struct Parameter {
 
 impl fmt::Display for Class {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Class: {} Variables: {} Subroutines: {}",
-            self.name, self.variables, self.subroutines
-        )
+        let class = format!("Class: {}", self.name);
+        writeln!(f, "{class}")?;
+        writeln!(f)?;
+        writeln!(f, "   Variables:")?;
+        pretty_list(f, &self.variables, "   ")?;
+        writeln!(f)?;
+        writeln!(f, "   Subroutines:")?;
+        pretty_list(f, &self.subroutines, "   ")?;
+        writeln!(f)
     }
 }
 
 impl fmt::Display for ClassVarDec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Variable(s): {} Type: {} Variable Type: {}",
-            self.names, self.type_, self.variable_type
-        )
+        let names = fmt_vector(&self.names);
+        write!(f, "{names}  ({}, {})", self.type_, self.variable_type)
     }
 }
 
 impl fmt::Display for ClassVarType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Field => "field",
-            Self::Static => "static",
-        };
-        write!(f, "{s}")
+        match self {
+            Self::Field => write!(f, "field"),
+            Self::Static => write!(f, "static"),
+        }
+    }
+}
+
+impl fmt::Display for VarDec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let names = fmt_vector(&self.names);
+        write!(f, "{names}: {}", self.type_)
     }
 }
 
 impl fmt::Display for SubroutineDec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        let parameters = if self.parameters.is_empty() {
+            "none".to_string()
+        } else {
+            fmt_vector(&self.parameters)
+        };
+        writeln!(
             f,
-            " Subroutine: {} type: {} return type: {} parameters: {} body: {}",
-            self.name, self.subroutine_type, self.return_type, self.parameters, self.body
-        )
+            "{} {} Parameters: ({parameters}) Return Type: {}",
+            self.subroutine_type, self.name, self.return_type
+        )?;
+        for line in self.body.to_string().lines() {
+            writeln!(f, "    {line}")?;
+        }
+        Ok(())
     }
 }
 
 impl fmt::Display for SubroutineType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Constructor => "constructor",
-            Self::Function => "function",
-            Self::Method => "method",
-        };
-        write!(f, "{s}")
+        match self {
+            Self::Constructor => write!(f, "constructor"),
+            Self::Function => write!(f, "function"),
+            Self::Method => write!(f, "method"),
+        }
     }
 }
 
 impl fmt::Display for SubroutineBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Variable(s): {} Statement(s): {}",
-            self.variables, self.statements
-        )
+        if !self.variables.is_empty() {
+            writeln!(f, "Locals:")?;
+            pretty_list(f, &self.variables, "    ")?;
+        }
+        if !self.statements.is_empty() {
+            writeln!(f, "Statements:")?;
+            pretty_list(f, &self.statements, "    ")?;
+        }
+        Ok(())
     }
 }
 
 impl fmt::Display for SubroutineCall {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Call: {} Receiver: {} Argument(s): {}",
-            self.name, self.receiver, self.arguments
-        )
+        let arguments = fmt_vector(&self.arguments);
+        match &self.receiver {
+            Some(receiver) => write!(f, "{receiver}.{}({arguments})", self.name),
+            None => write!(f, "{}({arguments})", self.name),
+        }
     }
 }
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Int => "int",
-            Self::Char => "char",
-            Self::Boolean => "boolean",
-            Self::Class(_) => "class",
-        };
-        write!(f, "{s}")
+        match self {
+            Self::Int => write!(f, "int"),
+            Self::Char => write!(f, "char"),
+            Self::Boolean => write!(f, "boolean"),
+            Self::Class(name) => write!(f, "{name}"),
+        }
     }
 }
 
 impl fmt::Display for ReturnType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Void => "void",
-            Self::Type(type_) => &type_.to_string(),
-        };
-        write!(f, "{s}")
+        match self {
+            Self::Void => write!(f, "void"),
+            Self::Type(type_) => write!(f, "{type_}"),
+        }
     }
 }
 
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Parameter: {} Type: {}", self.name, self.type_)
+        write!(f, "{}: {}", self.name, self.type_)
     }
 }

@@ -1,10 +1,10 @@
 use super::SubroutineCall;
+use super::fmt;
 
-use std::fmt;
-
-use crate::lexer::token::data_type::Identifier;
+use crate::lexer::token::types::Identifier;
 
 // --- Expression ---
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Expression {
     pub term: Term,
@@ -19,6 +19,7 @@ impl Expression {
 }
 
 // --- Term ---
+
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Term {
@@ -79,30 +80,26 @@ impl fmt::Display for Expression {
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IntegerConstant(integer) => write!(f, "{integer}"),
-            Self::StringConstant(string) => write!(f, "{string}"),
-            Self::KeywordConstant(keyword) => write!(f, "{keyword}"),
-            Self::Variable(variable) => write!(f, "{variable}"),
+            Self::IntegerConstant(n) => write!(f, "{n}"),
+            Self::StringConstant(s) => write!(f, "\"{s}\""),
+            Self::KeywordConstant(k) => write!(f, "{k}"),
+            Self::Variable(v) => write!(f, "{v}"),
             Self::ArrayAccess(name, index) => write!(f, "{name}[{index}]"),
-            Self::SubroutineCall(call) => match &call.receiver {
-                Some(receiver) => write!(f, "{receiver}.{}(...)", call.name),
-                None => write!(f, "{}(...)", call.name),
-            },
-            Self::Grouped(group) => write!(f, "({group})"),
-            Self::Unary(unary_operation, term) => write!(f, "{unary_operation}{term}"),
+            Self::SubroutineCall(call) => write!(f, "{call}"),
+            Self::Grouped(expr) => write!(f, "({expr})"),
+            Self::Unary(op, term) => write!(f, "{op}{term}"),
         }
     }
 }
 
 impl fmt::Display for KeywordConstant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::True => "true",
-            Self::False => "false",
-            Self::Null => "null",
-            Self::This => "this",
-        };
-        write!(f, "{s}")
+        match self {
+            Self::True => write!(f, "true"),
+            Self::False => write!(f, "false"),
+            Self::Null => write!(f, "null"),
+            Self::This => write!(f, "this"),
+        }
     }
 }
 
@@ -125,10 +122,9 @@ impl fmt::Display for BinaryOperation {
 
 impl fmt::Display for UnaryOperation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let c = match self {
-            Self::Minus => '-',
-            Self::Tilde => '~',
-        };
-        write!(f, "{c}")
+        match self {
+            Self::Minus => write!(f, "-"),
+            Self::Tilde => write!(f, "~"),
+        }
     }
 }

@@ -1,10 +1,10 @@
-pub mod keyword;
-pub mod symbol;
-pub mod data_type;
+pub mod keywords;
+pub mod symbols;
+pub mod types;
 
-pub use keyword::Keyword;
-pub use symbol::Symbol;
-pub use data_type::TokenType;
+pub use keywords::Keyword;
+pub use symbols::Symbol;
+pub use types::TokenType;
 
 use std::fmt;
 
