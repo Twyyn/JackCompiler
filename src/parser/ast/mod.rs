@@ -8,43 +8,58 @@ pub use expressions::*;
 pub use declarations::*;
 pub use statements::*;
 
-// --- Display Helpers ---
+// --- XML Helpers ---
 
-pub fn fmt_vector<T: fmt::Display>(vec: &[T]) -> String {
-    use std::fmt::Write;
-    let mut out = String::new();
-    for (i, item) in vec.iter().enumerate() {
-        if i > 0 {
-            out.push_str(", ");
-        }
-        write!(out, "{item}").unwrap();
-    }
-    out
+pub fn xml_open_tag(out: &mut String, tag: &str, indent: usize) {
+    xml_indent(out, indent);
+    out.push('<');
+    out.push_str(tag);
+    out.push_str(">\n");
 }
 
-#[allow(clippy::missing_errors_doc)]
-//Write each item on its own indented line.
-pub fn pretty_list(
-    f: &mut impl fmt::Write,
-    items: &[impl fmt::Display],
-    indent: &str,
-) -> fmt::Result {
-    if items.is_empty() {
-        return writeln!(f, "{indent}(none)");
-    }
+pub fn xml_close_tag(out: &mut String, tag: &str, indent: usize) {
+    xml_indent(out, indent);
+    out.push_str("</");
+    out.push_str(tag);
+    out.push_str(">\n");
+}
 
-    for item in items {
-        let text = item.to_string();
-        if text.is_empty() {
-            continue;
+pub fn xml_terminal(out: &mut String, tag: &str, value: &str, indent: usize) {
+    xml_indent(out, indent);
+    out.push('<');
+    out.push_str(tag);
+    out.push_str("> ");
+    out.push_str(value);
+    out.push_str(" </");
+    out.push_str(tag);
+    out.push_str(">\n");
+}
+
+pub fn xml_keyword(out: &mut String, kw: &str, indent: usize) {
+    xml_terminal(out, "keyword", kw, indent);
+}
+
+pub fn xml_identifier(out: &mut String, name: &str, indent: usize) {
+    xml_terminal(out, "identifier", name, indent);
+}
+
+pub fn xml_symbol(out: &mut String, c: char, indent: usize) {
+    let escaped: String = match c {
+        '<' => "&lt;".into(),
+        '>' => "&gt;".into(),
+        '&' => "&amp;".into(),
+        '"' => "&quot;".into(),
+        other => {
+            let mut s = String::with_capacity(1);
+            s.push(other);
+            s
         }
-        for (i, line) in text.lines().enumerate() {
-            if i == 0 {
-                writeln!(f, "{indent}• {line}")?;
-            } else {
-                writeln!(f, "{indent}  {line}")?;
-            }
-        }
+    };
+    xml_terminal(out, "symbol", &escaped, indent);
+}
+
+pub fn xml_indent(out: &mut String, indent: usize) {
+    for _ in 0..indent {
+        out.push_str("  ");
     }
-    Ok(())
 }

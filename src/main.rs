@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let compiler = JackCompiler::from_path(&source)?;
 
-    match compiler.compile() {
+    match compiler.parse_to_xml() {
         Ok(classes) => {
             for class in &classes {
                 println!("{class}");

@@ -110,7 +110,7 @@ impl JackCompiler {
     /// Returns a `CompilerError` if tokenization fails for any source file (e.g.,
     /// unrecognized character, malformed token), or if the parser encounters invalid
     /// or unexpected syntax while building the AST.
-    pub fn compile(&self) -> Result<Vec<Class>, CompilerError> {
+    pub fn parse_to_xml(&self) -> Result<Vec<Class>, CompilerError> {
         let mut classes = Vec::new();
         for file in &self.source_files {
             let tokens = Lexer::new(&file.contents).tokenize()?;
