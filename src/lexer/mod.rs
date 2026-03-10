@@ -8,6 +8,9 @@ use std::str::FromStr;
 use crate::JACK_INT_MAX;
 use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenType};
 
+// ── Lexer Result ────────────────────────────────────────
+type LexerResult<T> = std::result::Result<T, LexerError>;
+
 pub struct Lexer<'src> {
     source: &'src str,
     source_as_bytes: &'src [u8],
@@ -40,7 +43,7 @@ impl<'src> Lexer<'src> {
     /// such as an invalid symbol, unterminated string literal, integer that
     /// cannot be parsed or is out of the allowed range, or any other
     /// malformed token.
-    pub fn tokenize(mut self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(mut self) -> LexerResult<Vec<Token>> {
         while !self.is_at_end() {
             self.scan_token()?;
         }
@@ -51,7 +54,7 @@ impl<'src> Lexer<'src> {
 
     // --- Scanner Dispatch ---
 
-    fn scan_token(&mut self) -> Result<(), LexerError> {
+    fn scan_token(&mut self) -> LexerResult<()> {
         let start = self.position;
         let column = self.column;
         let c = self.advance();
@@ -75,7 +78,7 @@ impl<'src> Lexer<'src> {
 
     // --- Scanner Helpers ---
 
-    fn scan_string(&mut self, start: usize, column: u16) -> Result<(), LexerError> {
+    fn scan_string(&mut self, start: usize, column: u16) -> LexerResult<()> {
         let string_start = self.position;
         self.advance_while(|b| b != b'"');
         let lexeme = self.slice(string_start, self.position);
@@ -91,7 +94,7 @@ impl<'src> Lexer<'src> {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn scan_integer(&mut self, start: usize, column: u16) -> Result<(), LexerError> {
+    fn scan_integer(&mut self, start: usize, column: u16) -> LexerResult<()> {
         self.advance_while(|b| b.is_ascii_digit());
         let lexeme = self.slice(start, self.position);
 
@@ -129,7 +132,7 @@ impl<'src> Lexer<'src> {
 
     // --- Comments ---
 
-    fn skip_comment(&mut self) -> Result<(), LexerError> {
+    fn skip_comment(&mut self) -> LexerResult<()> {
         if self.peek() == b'*' {
             self.advance(); // Skip '*'
             while !self.is_at_end() {

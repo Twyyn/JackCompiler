@@ -5,14 +5,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .ok_or("Usage: jack_compiler <file.jack | directory>")?;
 
-    let compiler = JackCompiler::from_path(&source)?;
+    let _compiler = JackCompiler::from_path(&source)?;
 
-    match compiler.write_xml() {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("{e}");
-        }
-    }
+    // match compiler.write_xml() {
+    //     Ok(()) => {}
+    //     Err(e) => {
+    //         eprintln!("{e}");
+    //     }
+    // }
 
     Ok(())
 }

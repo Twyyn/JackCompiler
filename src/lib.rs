@@ -3,6 +3,8 @@ pub mod lexer;
 pub mod parser;
 
 use std::fs;
+#[allow(unused_imports)]
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use crate::error::CompilerResult;
@@ -108,21 +110,19 @@ impl JackCompiler {
     /// Returns a `CompilerError` if tokenization fails for any source file (e.g.,
     /// unrecognized character, malformed token), or if the parser encounters invalid
     /// or unexpected syntax while building the AST.
-    pub fn write_xml(self) -> CompilerResult<()> {
-        use std::io::{BufWriter, Write};
-
+    pub fn compile(self) -> CompilerResult<()> {
         for source_file in self.source_files {
             let file = fs::File::create(source_file.output_path)?;
-            let mut writer = BufWriter::new(file);
+            let mut _writer = BufWriter::new(file);
 
             let tokens = Lexer::new(&source_file.contents).tokenize()?;
 
             let mut parser = Parser::new(tokens);
-            let classes: Vec<Class> = parser.parse()?;
+            let _classes: Vec<Class> = parser.parse()?;
 
-            for class in classes {
-                write!(writer, "{class}",)?;
-            }
+            // for class in classes {
+            //     write!(writer, "{class}",)?;
+            // }
         }
 
         // let mut classes = Vec::new();

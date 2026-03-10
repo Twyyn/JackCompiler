@@ -3,15 +3,18 @@ pub mod error;
 
 use crate::lexer::token::types::Identifier;
 use crate::lexer::token::{Keyword, Symbol, Token, TokenType};
-use crate::parser::ast::expressions::{Expression, KeywordConstant, Term, UnaryOperation};
 use crate::parser::ast::declarations::{
     Class, ClassVarDec, ClassVarType, Parameter, ReturnType, SubroutineBody, SubroutineCall,
     SubroutineDec, SubroutineType, Type, VarDec,
 };
+use crate::parser::ast::expressions::{Expression, KeywordConstant, Term, UnaryOperation};
 use crate::parser::ast::statements::{
     DoStatement, IfStatement, LetStatement, ReturnStatement, Statement, WhileStatement,
 };
 use crate::parser::error::ParseError;
+
+// ── Parse Result ────────────────────────────────────────
+type ParseResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug)]
 pub struct Parser {
@@ -37,7 +40,7 @@ impl Parser {
     ///
     /// Propagates any [`ParseError`] raised by [`parse_class`](Self::parse_class),
     /// which includes unexpected or missing tokens at any level of the grammar.
-    pub fn parse(&mut self) -> Result<Vec<Class>, ParseError> {
+    pub fn parse(&mut self) -> ParseResult<Vec<Class>> {
         let mut classes = Vec::new();
         while !self.is_at_end() {
             classes.push(self.parse_class()?);
@@ -75,7 +78,7 @@ impl Parser {
         }
     }
 
-    fn advance_or_end(&mut self) -> Result<Token, ParseError> {
+    fn advance_or_end(&mut self) -> ParseResult<Token> {
         self.advance().ok_or(ParseError::UnexpectedEof)
     }
 
@@ -98,7 +101,7 @@ impl Parser {
     // ── Type Parsing ─────────────────────────────────────────────────
 
     #[rustfmt::skip]
-    fn parse_type(&mut self) -> Result<Type, ParseError> {
+    fn parse_type(&mut self) -> ParseResult<Type> {
         let token = self.advance_or_end()?;
         match token.token_type {
            TokenType::Keyword(Keyword::Int)     => Ok(Type::Int),
@@ -112,7 +115,7 @@ impl Parser {
 
     // ── Comma-Separated Lists ────────────────────────────────────────
 
-    fn parse_parameter(&mut self) -> Result<Parameter, ParseError> {
+    fn parse_parameter(&mut self) -> ParseResult<Parameter> {
         let type_ = self.parse_type()?;
         let name = self.expect_identifier()?;
 
@@ -149,7 +152,7 @@ impl Parser {
 
     // ── Expression & Term Parsing ────────────────────────────────────
 
-    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
+    fn parse_expression(&mut self) -> ParseResult<Expression> {
         let term = self.parse_term()?;
         let mut operations = Vec::new();
 
@@ -326,7 +329,7 @@ impl Parser {
 
     // ── Declaration Parsing ──────────────────────────────────────────
 
-    fn parse_var_dec(&mut self) -> Result<VarDec, ParseError> {
+    fn parse_var_dec(&mut self) -> ParseResult<VarDec> {
         self.expect(&TokenType::Keyword(Keyword::Var))?;
         let type_ = self.parse_type()?;
         let mut names = vec![self.expect_identifier()?];
@@ -405,7 +408,7 @@ impl Parser {
         })
     }
 
-    fn parse_class(&mut self) -> Result<Class, ParseError> {
+    fn parse_class(&mut self) -> ParseResult<Class> {
         self.expect(&TokenType::Keyword(Keyword::Class))?;
         let name = self.expect_identifier()?;
         self.expect(&TokenType::Symbol(Symbol::LeftBrace))?;
