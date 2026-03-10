@@ -91,7 +91,7 @@ impl JackCompiler {
 
                 let output_path = output_dir
                     .join(path.file_name().ok_or(CompilerError::InvalidPath)?)
-                    .with_extension("vm");
+                    .with_extension("xml");
 
                 Ok(SourceFile::new(name, contents, output_path))
             })
@@ -110,15 +110,31 @@ impl JackCompiler {
     /// Returns a `CompilerError` if tokenization fails for any source file (e.g.,
     /// unrecognized character, malformed token), or if the parser encounters invalid
     /// or unexpected syntax while building the AST.
-    pub fn parse_to_xml(&self) -> Result<Vec<Class>, CompilerError> {
-        let mut classes = Vec::new();
-        for file in &self.source_files {
-            let tokens = Lexer::new(&file.contents).tokenize()?;
-            let mut parsed = Parser::new(tokens).parse()?;
-            classes.append(&mut parsed);
+    pub fn write_xml(self) -> Result<(), CompilerError> {
+        use std::io::{BufWriter, Write};
+
+        for source_file in self.source_files {
+            let file = fs::File::create(source_file.output_path)?;
+            let mut writer = BufWriter::new(file);
+
+            let tokens = Lexer::new(&source_file.contents).tokenize()?;
+
+            let mut parser = Parser::new(tokens);
+            let classes: Vec<Class> = parser.parse()?;
+
+            for class in classes {
+                write!(writer, "{class}",)?;
+            }
         }
 
-        Ok(classes)
+        // let mut classes = Vec::new();
+        // for file in &self.source_files {
+        //     let tokens = Lexer::new(&file.contents).tokenize()?;
+        //     let mut parsed = Parser::new(tokens).parse()?;
+        //     classes.append(&mut parsed);
+        // }
+
+        Ok(())
     }
 
     // --- Filesystem Helpers ---
