@@ -3,6 +3,8 @@ use std::fmt;
 use crate::lexer::LexerError;
 use crate::parser::error::ParseError;
 
+pub type CompilerResult<T> = std::result::Result<T, CompilerError>;
+
 #[derive(Debug)]
 pub enum CompilerError {
     InvalidPath,

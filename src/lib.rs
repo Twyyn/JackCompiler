@@ -5,7 +5,7 @@ pub mod parser;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::error::CompilerError;
+use crate::error::CompilerResult;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::parser::ast::Class;
@@ -43,6 +43,7 @@ impl JackCompiler {
     pub fn new(source_files: Vec<SourceFile>) -> Self {
         Self { source_files }
     }
+
     /// Creates a new `JackCompiler` from a source file or directory.
     ///
     /// Reads all `.jack` source files from disk eagerly on construction.
@@ -51,10 +52,10 @@ impl JackCompiler {
     ///
     /// Returns a `CompilerError` if the source path is invalid, no Jack files are found,
     /// or if there is an I/O error reading the source files.
-    pub fn from_path(path: &str) -> Result<Self, CompilerError> {
+    pub fn from_path(path: &str) -> CompilerResult<Self> {
         let source = Path::new(path);
 
-        let (jack_files, output_dir) = if source.is_dir() {
+        let (jack_files, _output_dir) = if source.is_dir() {
             let mut files: Vec<PathBuf> = fs::read_dir(source)?
                 .filter_map(|entry| {
                     let path = entry.ok()?.path();
@@ -63,7 +64,7 @@ impl JackCompiler {
                 .collect();
 
             if files.is_empty() {
-                return Err(CompilerError::NoJackFiles);
+                return Err(error::CompilerError::NoJackFiles);
             }
             files.sort();
 
@@ -74,7 +75,7 @@ impl JackCompiler {
 
             (files, output_dir)
         } else {
-            return Err(CompilerError::InvalidPath);
+            return Err(error::CompilerError::InvalidPath);
         };
 
         let source_files = jack_files
@@ -82,20 +83,17 @@ impl JackCompiler {
             .map(|path| {
                 let name = path
                     .file_stem()
-                    .ok_or(CompilerError::InvalidPath)?
-                    .to_str()
-                    .ok_or(CompilerError::InvalidPath)?
-                    .to_owned();
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .to_string();
 
-                let contents = fs::read_to_string(&path).map_err(CompilerError::Io)?;
+                let contents = fs::read_to_string(&path)?;
 
-                let output_path = output_dir
-                    .join(path.file_name().ok_or(CompilerError::InvalidPath)?)
-                    .with_extension("xml");
+                let output_path = path.with_extension("xml");
 
                 Ok(SourceFile::new(name, contents, output_path))
             })
-            .collect::<Result<Vec<SourceFile>, CompilerError>>()?;
+            .collect::<CompilerResult<Vec<_>>>()?;
 
         Ok(Self::new(source_files))
     }
@@ -110,7 +108,7 @@ impl JackCompiler {
     /// Returns a `CompilerError` if tokenization fails for any source file (e.g.,
     /// unrecognized character, malformed token), or if the parser encounters invalid
     /// or unexpected syntax while building the AST.
-    pub fn write_xml(self) -> Result<(), CompilerError> {
+    pub fn write_xml(self) -> CompilerResult<()> {
         use std::io::{BufWriter, Write};
 
         for source_file in self.source_files {
