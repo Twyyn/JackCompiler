@@ -15,14 +15,14 @@ use crate::parser::error::ParseError;
 type ParseResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug)]
-pub struct Parser {
-    tokens: Vec<Token>,
+pub struct Parser<'t> {
+    tokens: &'t [Token],
     position: usize,
 }
 
-impl Parser {
+impl<'t> Parser<'t> {
     #[must_use]
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: &'t [Token]) -> Self {
         Self {
             tokens,
             position: 0,
