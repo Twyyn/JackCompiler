@@ -8,9 +8,7 @@ use crate::parser::ast::declaration::{
     SubroutineCall, SubroutineDec, SubroutineKind, VarDec,
 };
 use crate::parser::ast::expression::{Expr, KeywordConstant, Term, UnaryOp};
-use crate::parser::ast::statement::{
-    DoStatement, IfStatement, LetStatement, ReturnStatement, Statement, WhileStatement,
-};
+use crate::parser::ast::statement::{DoStmt, IfStmt, LetStmt, ReturnStmt, Statement, WhileStmt};
 use crate::parser::error::ParseError;
 
 // ── Parse Result ────────────────────────────────────────
@@ -269,7 +267,7 @@ impl Parser {
                 let expr = self.parse_expression()?;
                 self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-                Ok(Statement::Let(LetStatement { name, index, expr }))
+                Ok(Statement::Let(LetStmt { name, index, expr }))
             }
 
             TokenKind::Keyword(Keyword::If) => {
@@ -285,7 +283,7 @@ impl Parser {
                     None
                 };
 
-                Ok(Statement::If(IfStatement {
+                Ok(Statement::If(IfStmt {
                     condition,
                     if_body,
                     else_body,
@@ -298,7 +296,7 @@ impl Parser {
                 self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
                 let body = self.parse_block()?;
 
-                Ok(Statement::While(WhileStatement { condition, body }))
+                Ok(Statement::While(WhileStmt { condition, body }))
             }
 
             TokenKind::Keyword(Keyword::Do) => {
@@ -306,7 +304,7 @@ impl Parser {
                 let subroutine_call = self.parse_subroutine_call(&name)?;
                 self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-                Ok(Statement::Do(DoStatement { subroutine_call }))
+                Ok(Statement::Do(DoStmt { subroutine_call }))
             }
 
             TokenKind::Keyword(Keyword::Return) => {
@@ -317,7 +315,7 @@ impl Parser {
                 };
                 self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-                Ok(Statement::Return(ReturnStatement { expr }))
+                Ok(Statement::Return(ReturnStmt { expr }))
             }
 
             _ => Err(ParseError::UnexpectedToken(token)),
@@ -412,10 +410,7 @@ impl Parser {
 
         let mut variables = Vec::new();
         while self.peek_matches(|kind| {
-            matches!(
-                kind,
-                TokenKind::Keyword(Keyword::Static | Keyword::Field)
-            )
+            matches!(kind, TokenKind::Keyword(Keyword::Static | Keyword::Field))
         }) {
             variables.push(self.parse_class_var_dec()?);
         }

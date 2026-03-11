@@ -6,17 +6,17 @@ use super::{Expr, SubroutineCall};
 
 #[derive(Debug)]
 pub enum Statement {
-    Let(LetStatement),
-    If(IfStatement),
-    While(WhileStatement),
-    Do(DoStatement),
-    Return(ReturnStatement),
+    Let(LetStmt),
+    If(IfStmt),
+    While(WhileStmt),
+    Do(DoStmt),
+    Return(ReturnStmt),
 }
 
 // --- Let ---
 
 #[derive(Debug)]
-pub struct LetStatement {
+pub struct LetStmt {
     pub name: Identifier,
     pub index: Option<Expr>,
     pub expr: Expr,
@@ -25,7 +25,7 @@ pub struct LetStatement {
 // --- If ---
 
 #[derive(Debug)]
-pub struct IfStatement {
+pub struct IfStmt {
     pub condition: Expr,
     pub if_body: Vec<Statement>,
     pub else_body: Option<Vec<Statement>>,
@@ -34,7 +34,7 @@ pub struct IfStatement {
 // --- While ---
 
 #[derive(Debug)]
-pub struct WhileStatement {
+pub struct WhileStmt {
     pub condition: Expr,
     pub body: Vec<Statement>,
 }
@@ -42,14 +42,14 @@ pub struct WhileStatement {
 // --- Do ---
 
 #[derive(Debug)]
-pub struct DoStatement {
+pub struct DoStmt {
     pub subroutine_call: SubroutineCall,
 }
 
 // --- Return ---
 
 #[derive(Debug)]
-pub struct ReturnStatement {
+pub struct ReturnStmt {
     pub expr: Option<Expr>,
 }
 
