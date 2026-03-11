@@ -15,6 +15,7 @@ use crate::parser::ast::Class;
 pub const JACK_INT_MAX: u32 = 32767;
 
 // --- Source File ---
+
 #[derive(Debug)]
 pub struct SourceFile {
     pub name: String,
@@ -57,8 +58,8 @@ impl JackCompiler {
     pub fn from_path(path: &str) -> CompilerResult<Self> {
         let source = Path::new(path);
 
-        let (jack_files, _output_dir) = if source.is_dir() {
-            let mut files: Vec<PathBuf> = fs::read_dir(source)?
+        let jack_files: Vec<_> = if source.is_dir() {
+            let mut files: Vec<_> = fs::read_dir(source)?
                 .filter_map(|entry| {
                     let path = entry.ok()?.path();
                     Self::is_jack_file(&path).then_some(path)
@@ -68,14 +69,11 @@ impl JackCompiler {
             if files.is_empty() {
                 return Err(error::CompilerError::NoJackFiles);
             }
+
             files.sort();
-
-            (files, source)
+            files
         } else if Self::is_jack_file(source) {
-            let files: Vec<PathBuf> = vec![source.into()];
-            let output_dir = source.parent().unwrap_or_else(|| Path::new("."));
-
-            (files, output_dir)
+            vec![source.into()]
         } else {
             return Err(error::CompilerError::InvalidPath);
         };
@@ -86,12 +84,11 @@ impl JackCompiler {
                 let name = path
                     .file_stem()
                     .and_then(|s| s.to_str())
-                    .unwrap_or_default()
+                    .unwrap_or("")
                     .to_string();
 
                 let contents = fs::read_to_string(&path)?;
-
-                let output_path = path.with_extension("xml");
+                let output_path = path.with_extension("vm");
 
                 Ok(SourceFile::new(name, contents, output_path))
             })
