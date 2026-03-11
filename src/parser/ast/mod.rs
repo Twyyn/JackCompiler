@@ -1,9 +1,9 @@
-pub mod declarations;
-pub mod expressions;
-pub mod statements;
+pub mod declaration;
+pub mod expression;
+pub mod statement;
 
 pub use std::fmt;
 
-pub use declarations::*;
-pub use expressions::*;
-pub use statements::*;
+pub use declaration::*;
+pub use expression::*;
+pub use statement::*;

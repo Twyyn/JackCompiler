@@ -1,6 +1,6 @@
-use crate::lexer::token::types::Identifier;
+use crate::lexer::token::kind::Identifier;
 
-use super::{Expression, SubroutineCall};
+use super::{Expr, SubroutineCall};
 
 // --- Statements ---
 
@@ -18,15 +18,15 @@ pub enum Statement {
 #[derive(Debug)]
 pub struct LetStatement {
     pub name: Identifier,
-    pub index: Option<Expression>,
-    pub expression: Expression,
+    pub index: Option<Expr>,
+    pub expr: Expr,
 }
 
 // --- If ---
 
 #[derive(Debug)]
 pub struct IfStatement {
-    pub condition: Expression,
+    pub condition: Expr,
     pub if_body: Vec<Statement>,
     pub else_body: Option<Vec<Statement>>,
 }
@@ -35,7 +35,7 @@ pub struct IfStatement {
 
 #[derive(Debug)]
 pub struct WhileStatement {
-    pub condition: Expression,
+    pub condition: Expr,
     pub body: Vec<Statement>,
 }
 
@@ -50,7 +50,7 @@ pub struct DoStatement {
 
 #[derive(Debug)]
 pub struct ReturnStatement {
-    pub expression: Option<Expression>,
+    pub expr: Option<Expr>,
 }
 
 // // --- Display Impls ---

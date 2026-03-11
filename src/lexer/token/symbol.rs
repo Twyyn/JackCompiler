@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::parser::ast::BinaryOperation;
+use crate::parser::ast::BinaryOp;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,17 +80,17 @@ impl Symbol {
     }
 
     #[must_use]
-    pub fn as_binary_operation(self) -> Option<BinaryOperation> {
+    pub fn as_binary_operation(self) -> Option<BinaryOp> {
         match self {
-            Symbol::Plus => Some(BinaryOperation::Add),
-            Symbol::Minus => Some(BinaryOperation::Sub),
-            Symbol::Star => Some(BinaryOperation::Mul),
-            Symbol::Slash => Some(BinaryOperation::Div),
-            Symbol::Ampersand => Some(BinaryOperation::And),
-            Symbol::Pipe => Some(BinaryOperation::Or),
-            Symbol::GreaterThan => Some(BinaryOperation::GreaterThan),
-            Symbol::LessThan => Some(BinaryOperation::LessThan),
-            Symbol::Equal => Some(BinaryOperation::Equal),
+            Symbol::Plus => Some(BinaryOp::Add),
+            Symbol::Minus => Some(BinaryOp::Sub),
+            Symbol::Star => Some(BinaryOp::Mul),
+            Symbol::Slash => Some(BinaryOp::Div),
+            Symbol::Ampersand => Some(BinaryOp::And),
+            Symbol::Pipe => Some(BinaryOp::Or),
+            Symbol::GreaterThan => Some(BinaryOp::GreaterThan),
+            Symbol::LessThan => Some(BinaryOp::LessThan),
+            Symbol::Equal => Some(BinaryOp::Equal),
             _ => None,
         }
     }

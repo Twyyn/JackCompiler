@@ -6,7 +6,7 @@ pub type Identifier = Box<str>;
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub enum TokenType {
+pub enum TokenKind {
     Keyword(Keyword),
     Symbol(Symbol),
     IntegerConstant(u16),
@@ -15,7 +15,7 @@ pub enum TokenType {
     Eof,
 }
 
-impl fmt::Display for TokenType {
+impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keyword(_) => write!(f, "keyword"),

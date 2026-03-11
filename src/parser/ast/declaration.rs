@@ -1,6 +1,6 @@
-use crate::lexer::token::types::Identifier;
+use crate::lexer::token::kind::Identifier;
 
-use super::{Expression, Statement};
+use super::{Expr, Statement};
 
 // --- Class ---
 
@@ -16,12 +16,12 @@ pub struct Class {
 #[derive(Debug)]
 pub struct ClassVarDec {
     pub names: Vec<Identifier>,
-    pub type_: Type,
-    pub variable_type: ClassVarType,
+    pub kind: DataKind,
+    pub var_kind: ClassVarKind,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ClassVarType {
+pub enum ClassVarKind {
     Static,
     Field,
 }
@@ -31,7 +31,7 @@ pub enum ClassVarType {
 #[derive(Debug)]
 pub struct VarDec {
     pub names: Vec<Identifier>,
-    pub type_: Type,
+    pub kind: DataKind,
 }
 
 // --- Subroutine Declaration ---
@@ -39,15 +39,15 @@ pub struct VarDec {
 #[derive(Debug)]
 pub struct SubroutineDec {
     pub name: Identifier,
-    pub subroutine_type: SubroutineType,
-    pub return_type: ReturnType,
+    pub kind: SubroutineKind,
+    pub return_kind: ReturnKind,
     pub parameters: Vec<Parameter>,
     pub body: SubroutineBody,
 }
-// --- Subroutine Type---
+// --- Subroutine Types(Kind)---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SubroutineType {
+pub enum SubroutineKind {
     Constructor,
     Function,
     Method,
@@ -67,25 +67,25 @@ pub struct SubroutineBody {
 pub struct SubroutineCall {
     pub name: Identifier,
     pub receiver: Option<Identifier>,
-    pub arguments: Vec<Expression>,
+    pub args: Vec<Expr>,
 }
 
-// --- Jack Data Types ---
+// --- Data Types(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Type {
+pub enum DataKind {
     Int,
     Char,
     Boolean,
     Class(Identifier),
 }
 
-// --- Jack Return Types ---
+// --- Jack Return Types(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReturnType {
+pub enum ReturnKind {
     Void,
-    Type(Type),
+    Kind(DataKind),
 }
 
 // --- Parameter/Argument ---
@@ -93,7 +93,7 @@ pub enum ReturnType {
 #[derive(Debug)]
 pub struct Parameter {
     pub name: Identifier,
-    pub type_: Type,
+    pub kind: DataKind,
 }
 
 // impl fmt::Display for Class {
@@ -104,7 +104,7 @@ pub struct Parameter {
 //     }
 // }
 
-// impl fmt::Display for ClassVarType {
+// impl fmt::Display for ClassVarKind {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         match self {
 //             Self::Field => write!(f, "field"),
@@ -113,7 +113,7 @@ pub struct Parameter {
 //     }
 // }
 
-// impl fmt::Display for SubroutineType {
+// impl fmt::Display for SubroutineKind {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         match self {
 //             Self::Constructor => write!(f, "constructor"),
@@ -123,7 +123,7 @@ pub struct Parameter {
 //     }
 // }
 
-// impl fmt::Display for Type {
+// impl fmt::Display for DataKind {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         match self {
 //             Self::Int => write!(f, "int"),
@@ -134,17 +134,17 @@ pub struct Parameter {
 //     }
 // }
 
-// impl fmt::Display for ReturnType {
+// impl fmt::Display for ReturnKind {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         match self {
 //             Self::Void => write!(f, "void"),
-//             Self::Type(type_) => write!(f, "{type_}"),
+//             Self::Kind(kind) => write!(f, "{kind}"),
 //         }
 //     }
 // }
 
 // impl fmt::Display for Parameter {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}: {}", self.name, self.type_)
+//         write!(f, "{}: {}", self.name, self.kind)
 //     }
 // }

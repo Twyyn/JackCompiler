@@ -1,19 +1,19 @@
 use super::SubroutineCall;
 
-use crate::lexer::token::types::Identifier;
+use crate::lexer::token::kind::Identifier;
 
 // --- Expression ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Expression {
+pub struct Expr {
     pub term: Term,
-    pub operations: Vec<(BinaryOperation, Term)>,
+    pub op: Vec<(BinaryOp, Term)>,
 }
 
-impl Expression {
+impl Expr {
     #[must_use]
-    pub fn new(term: Term, operations: Vec<(BinaryOperation, Term)>) -> Self {
-        Self { term, operations }
+    pub fn new(term: Term, op: Vec<(BinaryOp, Term)>) -> Self {
+        Self { term, op }
     }
 }
 
@@ -26,10 +26,10 @@ pub enum Term {
     StringConstant(Identifier),
     KeywordConstant(KeywordConstant),
     Variable(Identifier),
-    ArrayAccess(Identifier, Box<Expression>),
+    ArrayAccess(Identifier, Box<Expr>),
     SubroutineCall(SubroutineCall),
-    Grouped(Box<Expression>),
-    Unary(UnaryOperation, Box<Term>),
+    Grouped(Box<Expr>),
+    Unary(UnaryOp, Box<Term>),
 }
 
 // --- Keyword Constant ---
@@ -59,7 +59,7 @@ impl KeywordConstant {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
-pub enum BinaryOperation {
+pub enum BinaryOp {
     Add,
     Sub,
     Mul,
@@ -71,7 +71,7 @@ pub enum BinaryOperation {
     Equal,
 }
 
-impl BinaryOperation {
+impl BinaryOp {
     #[must_use]
     pub fn as_char(&self) -> char {
         match self {
@@ -90,12 +90,12 @@ impl BinaryOperation {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
-pub enum UnaryOperation {
+pub enum UnaryOp {
     Minus,
     Tilde,
 }
 
-impl UnaryOperation {
+impl UnaryOp {
     #[must_use]
     pub fn as_char(&self) -> char {
         match self {
@@ -129,13 +129,13 @@ impl UnaryOperation {
 //     }
 // }
 
-// impl fmt::Display for BinaryOperation {
+// impl fmt::Display for BinaryOp {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         write!(f, "{}", self.as_char())
 //     }
 // }
 
-// impl fmt::Display for UnaryOperation {
+// impl fmt::Display for UnaryOp {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         write!(f, "{}", self.as_char())
 //     }

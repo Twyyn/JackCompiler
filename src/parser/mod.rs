@@ -1,14 +1,14 @@
 pub mod ast;
 pub mod error;
 
-use crate::lexer::token::types::Identifier;
-use crate::lexer::token::{Keyword, Symbol, Token, TokenType};
-use crate::parser::ast::declarations::{
-    Class, ClassVarDec, ClassVarType, Parameter, ReturnType, SubroutineBody, SubroutineCall,
-    SubroutineDec, SubroutineType, Type, VarDec,
+use crate::lexer::token::kind::Identifier;
+use crate::lexer::token::{Keyword, Symbol, Token, TokenKind};
+use crate::parser::ast::declaration::{
+    Class, ClassVarDec, ClassVarKind, DataKind, Parameter, ReturnKind, SubroutineBody,
+    SubroutineCall, SubroutineDec, SubroutineKind, VarDec,
 };
-use crate::parser::ast::expressions::{Expression, KeywordConstant, Term, UnaryOperation};
-use crate::parser::ast::statements::{
+use crate::parser::ast::expression::{Expr, KeywordConstant, Term, UnaryOp};
+use crate::parser::ast::statement::{
     DoStatement, IfStatement, LetStatement, ReturnStatement, Statement, WhileStatement,
 };
 use crate::parser::error::ParseError;
@@ -51,7 +51,7 @@ impl Parser {
 
     fn is_at_end(&self) -> bool {
         self.position >= self.tokens.len()
-            || self.peek_matches(|token_type| matches!(token_type, TokenType::Eof))
+            || self.peek_matches(|kind| matches!(kind, TokenKind::Eof))
     }
 
     // ── Token Navigation ─────────────────────────────────────────────
@@ -60,12 +60,12 @@ impl Parser {
         self.tokens.get(self.position)
     }
 
-    fn peek_is(&self, expected: &TokenType) -> bool {
-        self.peek_matches(|token_type| *token_type == *expected)
+    fn peek_is(&self, expected: &TokenKind) -> bool {
+        self.peek_matches(|kind| *kind == *expected)
     }
 
-    fn peek_matches(&self, f: impl FnOnce(&TokenType) -> bool) -> bool {
-        self.peek().is_some_and(|token| f(&token.token_type))
+    fn peek_matches(&self, f: impl FnOnce(&TokenKind) -> bool) -> bool {
+        self.peek().is_some_and(|token| f(&token.kind))
     }
 
     fn advance(&mut self) -> Option<Token> {
@@ -82,32 +82,32 @@ impl Parser {
         self.advance().ok_or(ParseError::UnexpectedEof)
     }
 
-    fn expect(&mut self, token_type: &TokenType) -> Result<Token, ParseError> {
+    fn expect(&mut self, kind: &TokenKind) -> Result<Token, ParseError> {
         let token = self.advance_or_end()?;
         match token {
-            token if token.token_type == *token_type => Ok(token),
+            token if token.kind == *kind => Ok(token),
             token => Err(ParseError::UnexpectedToken(token)),
         }
     }
 
     fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
         let token = self.advance_or_end()?;
-        match token.token_type {
-            TokenType::Identifier(name) => Ok(name),
+        match token.kind {
+            TokenKind::Identifier(name) => Ok(name),
             _ => Err(ParseError::UnexpectedToken(token)),
         }
     }
 
-    // ── Type Parsing ─────────────────────────────────────────────────
+    // ── DataKind Parsing ─────────────────────────────────────────────────
 
     #[rustfmt::skip]
-    fn parse_type(&mut self) -> ParseResult<Type> {
+    fn parse_kind(&mut self) -> ParseResult<DataKind> {
         let token = self.advance_or_end()?;
-        match token.token_type {
-           TokenType::Keyword(Keyword::Int)     => Ok(Type::Int),
-           TokenType::Keyword(Keyword::Char)    => Ok(Type::Char),
-           TokenType::Keyword(Keyword::Boolean) => Ok(Type::Boolean),
-           TokenType::Identifier(name)          => Ok(Type::Class(name)),
+        match token.kind {
+           TokenKind::Keyword(Keyword::Int)     => Ok(DataKind::Int),
+           TokenKind::Keyword(Keyword::Char)    => Ok(DataKind::Char),
+           TokenKind::Keyword(Keyword::Boolean) => Ok(DataKind::Boolean),
+           TokenKind::Identifier(name)          => Ok(DataKind::Class(name)),
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
@@ -116,32 +116,32 @@ impl Parser {
     // ── Comma-Separated Lists ────────────────────────────────────────
 
     fn parse_parameter(&mut self) -> ParseResult<Parameter> {
-        let type_ = self.parse_type()?;
+        let kind = self.parse_kind()?;
         let name = self.expect_identifier()?;
 
-        Ok(Parameter { name, type_ })
+        Ok(Parameter { name, kind })
     }
 
     fn parse_parameter_list(&mut self) -> Result<Vec<Parameter>, ParseError> {
-        self.expect(&TokenType::Symbol(Symbol::LeftParen))?;
+        self.expect(&TokenKind::Symbol(Symbol::LeftParen))?;
         let mut params = Vec::new();
-        if !self.peek_is(&TokenType::Symbol(Symbol::RightParen)) {
+        if !self.peek_is(&TokenKind::Symbol(Symbol::RightParen)) {
             params.push(self.parse_parameter()?);
-            while self.peek_is(&TokenType::Symbol(Symbol::Comma)) {
+            while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
                 self.advance();
                 params.push(self.parse_parameter()?);
             }
         }
-        self.expect(&TokenType::Symbol(Symbol::RightParen))?;
+        self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
 
         Ok(params)
     }
 
-    fn parse_expression_list(&mut self) -> Result<Vec<Expression>, ParseError> {
+    fn parse_expression_list(&mut self) -> Result<Vec<Expr>, ParseError> {
         let mut args = Vec::new();
-        if !self.peek_is(&TokenType::Symbol(Symbol::RightParen)) {
+        if !self.peek_is(&TokenKind::Symbol(Symbol::RightParen)) {
             args.push(self.parse_expression()?);
-            while self.peek_is(&TokenType::Symbol(Symbol::Comma)) {
+            while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
                 self.advance();
                 args.push(self.parse_expression()?);
             }
@@ -152,28 +152,31 @@ impl Parser {
 
     // ── Expression & Term Parsing ────────────────────────────────────
 
-    fn parse_expression(&mut self) -> ParseResult<Expression> {
+    fn parse_expression(&mut self) -> ParseResult<Expr> {
         let term = self.parse_term()?;
         let mut operations = Vec::new();
 
-        while let Some(operation) = self.peek().and_then(|token| match token.token_type {
-            TokenType::Symbol(symbol) => symbol.as_binary_operation(),
+        while let Some(op) = self.peek().and_then(|token| match token.kind {
+            TokenKind::Symbol(symbol) => symbol.as_binary_operation(),
             _ => None,
         }) {
             self.advance();
-            operations.push((operation, self.parse_term()?));
+            operations.push((op, self.parse_term()?));
         }
 
-        Ok(Expression { term, operations })
+        Ok(Expr {
+            term,
+            op: operations,
+        })
     }
 
     fn parse_term(&mut self) -> Result<Term, ParseError> {
         let token = self.advance_or_end()?;
-        match token.token_type {
-            TokenType::IntegerConstant(integer) => Ok(Term::IntegerConstant(integer)),
-            TokenType::StringConstant(string) => Ok(Term::StringConstant(string)),
+        match token.kind {
+            TokenKind::IntegerConstant(integer) => Ok(Term::IntegerConstant(integer)),
+            TokenKind::StringConstant(string) => Ok(Term::StringConstant(string)),
 
-            TokenType::Keyword(keyword) => match keyword {
+            TokenKind::Keyword(keyword) => match keyword {
                 Keyword::True => Ok(Term::KeywordConstant(KeywordConstant::True)),
                 Keyword::False => Ok(Term::KeywordConstant(KeywordConstant::False)),
                 Keyword::Null => Ok(Term::KeywordConstant(KeywordConstant::Null)),
@@ -181,14 +184,14 @@ impl Parser {
                 _ => Err(ParseError::UnexpectedToken(token)),
             },
 
-            TokenType::Identifier(name) => {
-                if self.peek_is(&TokenType::Symbol(Symbol::LeftBracket)) {
+            TokenKind::Identifier(name) => {
+                if self.peek_is(&TokenKind::Symbol(Symbol::LeftBracket)) {
                     self.advance();
                     let index = self.parse_expression()?;
-                    self.expect(&TokenType::Symbol(Symbol::RightBracket))?;
+                    self.expect(&TokenKind::Symbol(Symbol::RightBracket))?;
                     Ok(Term::ArrayAccess(name, Box::new(index)))
-                } else if self.peek_is(&TokenType::Symbol(Symbol::LeftParen))
-                    || self.peek_is(&TokenType::Symbol(Symbol::Dot))
+                } else if self.peek_is(&TokenKind::Symbol(Symbol::LeftParen))
+                    || self.peek_is(&TokenKind::Symbol(Symbol::Dot))
                 {
                     Ok(Term::SubroutineCall(self.parse_subroutine_call(&name)?))
                 } else {
@@ -196,54 +199,52 @@ impl Parser {
                 }
             }
 
-            TokenType::Symbol(Symbol::LeftParen) => {
+            TokenKind::Symbol(Symbol::LeftParen) => {
                 let expr = self.parse_expression()?;
-                self.expect(&TokenType::Symbol(Symbol::RightParen))?;
+                self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
                 Ok(Term::Grouped(Box::new(expr)))
             }
-            TokenType::Symbol(Symbol::Minus) => Ok(Term::Unary(
-                UnaryOperation::Minus,
-                Box::new(self.parse_term()?),
-            )),
-            TokenType::Symbol(Symbol::Tilde) => Ok(Term::Unary(
-                UnaryOperation::Tilde,
-                Box::new(self.parse_term()?),
-            )),
+            TokenKind::Symbol(Symbol::Minus) => {
+                Ok(Term::Unary(UnaryOp::Minus, Box::new(self.parse_term()?)))
+            }
+            TokenKind::Symbol(Symbol::Tilde) => {
+                Ok(Term::Unary(UnaryOp::Tilde, Box::new(self.parse_term()?)))
+            }
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
     }
 
     fn parse_subroutine_call(&mut self, first: &str) -> Result<SubroutineCall, ParseError> {
-        let (receiver, name) = if self.peek_is(&TokenType::Symbol(Symbol::Dot)) {
+        let (receiver, name) = if self.peek_is(&TokenKind::Symbol(Symbol::Dot)) {
             self.advance();
             (Some(first.into()), self.expect_identifier()?)
         } else {
             (None, first.into())
         };
 
-        self.expect(&TokenType::Symbol(Symbol::LeftParen))?;
-        let arguments = self.parse_expression_list()?;
-        self.expect(&TokenType::Symbol(Symbol::RightParen))?;
+        self.expect(&TokenKind::Symbol(Symbol::LeftParen))?;
+        let args = self.parse_expression_list()?;
+        self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
 
         Ok(SubroutineCall {
             name,
             receiver,
-            arguments,
+            args,
         })
     }
 
     // ── Statement & Block Parsing ────────────────────────────────────
 
     fn parse_block(&mut self) -> Result<Vec<Statement>, ParseError> {
-        self.expect(&TokenType::Symbol(Symbol::LeftBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::LeftBrace))?;
         let statements = self.parse_statement_list()?;
-        self.expect(&TokenType::Symbol(Symbol::RightBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::RightBrace))?;
         Ok(statements)
     }
     fn parse_statement_list(&mut self) -> Result<Vec<Statement>, ParseError> {
         let mut statements = Vec::new();
-        while !self.is_at_end() && !self.peek_is(&TokenType::Symbol(Symbol::RightBrace)) {
+        while !self.is_at_end() && !self.peek_is(&TokenKind::Symbol(Symbol::RightBrace)) {
             statements.push(self.parse_statement()?);
         }
 
@@ -252,36 +253,32 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         let token = self.advance_or_end()?;
-        match token.token_type {
-            TokenType::Keyword(Keyword::Let) => {
+        match token.kind {
+            TokenKind::Keyword(Keyword::Let) => {
                 let name = self.expect_identifier()?;
-                let index = if self.peek_is(&TokenType::Symbol(Symbol::LeftBracket)) {
+                let index = if self.peek_is(&TokenKind::Symbol(Symbol::LeftBracket)) {
                     self.advance();
                     let index = Some(self.parse_expression()?);
-                    self.expect(&TokenType::Symbol(Symbol::RightBracket))?;
+                    self.expect(&TokenKind::Symbol(Symbol::RightBracket))?;
                     index
                 } else {
                     None
                 };
 
-                self.expect(&TokenType::Symbol(Symbol::Equal))?;
-                let expression = self.parse_expression()?;
-                self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
+                self.expect(&TokenKind::Symbol(Symbol::Equal))?;
+                let expr = self.parse_expression()?;
+                self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-                Ok(Statement::Let(LetStatement {
-                    name,
-                    index,
-                    expression,
-                }))
+                Ok(Statement::Let(LetStatement { name, index, expr }))
             }
 
-            TokenType::Keyword(Keyword::If) => {
-                self.expect(&TokenType::Symbol(Symbol::LeftParen))?;
+            TokenKind::Keyword(Keyword::If) => {
+                self.expect(&TokenKind::Symbol(Symbol::LeftParen))?;
                 let condition = self.parse_expression()?;
-                self.expect(&TokenType::Symbol(Symbol::RightParen))?;
+                self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
 
                 let if_body = self.parse_block()?;
-                let else_body = if self.peek_is(&TokenType::Keyword(Keyword::Else)) {
+                let else_body = if self.peek_is(&TokenKind::Keyword(Keyword::Else)) {
                     self.advance();
                     Some(self.parse_block()?)
                 } else {
@@ -295,32 +292,32 @@ impl Parser {
                 }))
             }
 
-            TokenType::Keyword(Keyword::While) => {
-                self.expect(&TokenType::Symbol(Symbol::LeftParen))?;
+            TokenKind::Keyword(Keyword::While) => {
+                self.expect(&TokenKind::Symbol(Symbol::LeftParen))?;
                 let condition = self.parse_expression()?;
-                self.expect(&TokenType::Symbol(Symbol::RightParen))?;
+                self.expect(&TokenKind::Symbol(Symbol::RightParen))?;
                 let body = self.parse_block()?;
 
                 Ok(Statement::While(WhileStatement { condition, body }))
             }
 
-            TokenType::Keyword(Keyword::Do) => {
+            TokenKind::Keyword(Keyword::Do) => {
                 let name = self.expect_identifier()?;
                 let subroutine_call = self.parse_subroutine_call(&name)?;
-                self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
+                self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
                 Ok(Statement::Do(DoStatement { subroutine_call }))
             }
 
-            TokenType::Keyword(Keyword::Return) => {
-                let expression = if self.peek_is(&TokenType::Symbol(Symbol::Semicolon)) {
+            TokenKind::Keyword(Keyword::Return) => {
+                let expr = if self.peek_is(&TokenKind::Symbol(Symbol::Semicolon)) {
                     None
                 } else {
                     Some(self.parse_expression()?)
                 };
-                self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
+                self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-                Ok(Statement::Return(ReturnStatement { expression }))
+                Ok(Statement::Return(ReturnStatement { expr }))
             }
 
             _ => Err(ParseError::UnexpectedToken(token)),
@@ -330,75 +327,75 @@ impl Parser {
     // ── Declaration Parsing ──────────────────────────────────────────
 
     fn parse_var_dec(&mut self) -> ParseResult<VarDec> {
-        self.expect(&TokenType::Keyword(Keyword::Var))?;
-        let type_ = self.parse_type()?;
+        self.expect(&TokenKind::Keyword(Keyword::Var))?;
+        let kind = self.parse_kind()?;
         let mut names = vec![self.expect_identifier()?];
-        while self.peek_is(&TokenType::Symbol(Symbol::Comma)) {
+        while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
             self.advance();
             names.push(self.expect_identifier()?);
         }
-        self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
+        self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-        Ok(VarDec { names, type_ })
+        Ok(VarDec { names, kind })
     }
 
     fn parse_class_var_dec(&mut self) -> Result<ClassVarDec, ParseError> {
         let token = self.advance_or_end()?;
-        let variable_type = match token.token_type {
-            TokenType::Keyword(Keyword::Static) => ClassVarType::Static,
-            TokenType::Keyword(Keyword::Field) => ClassVarType::Field,
+        let var_kind = match token.kind {
+            TokenKind::Keyword(Keyword::Static) => ClassVarKind::Static,
+            TokenKind::Keyword(Keyword::Field) => ClassVarKind::Field,
             _ => return Err(ParseError::UnexpectedToken(token)),
         };
 
-        let type_ = self.parse_type()?;
+        let kind = self.parse_kind()?;
         let mut names = vec![self.expect_identifier()?];
-        while self.peek_is(&TokenType::Symbol(Symbol::Comma)) {
+        while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
             self.advance();
             names.push(self.expect_identifier()?);
         }
-        self.expect(&TokenType::Symbol(Symbol::Semicolon))?;
+        self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
         Ok(ClassVarDec {
             names,
-            type_,
-            variable_type,
+            kind,
+            var_kind,
         })
     }
 
     fn parse_subroutine_dec(&mut self) -> Result<SubroutineDec, ParseError> {
         let token = self.advance_or_end()?;
-        let subroutine_type = match token.token_type {
-            TokenType::Keyword(Keyword::Constructor) => SubroutineType::Constructor,
-            TokenType::Keyword(Keyword::Function) => SubroutineType::Function,
-            TokenType::Keyword(Keyword::Method) => SubroutineType::Method,
+        let kind = match token.kind {
+            TokenKind::Keyword(Keyword::Constructor) => SubroutineKind::Constructor,
+            TokenKind::Keyword(Keyword::Function) => SubroutineKind::Function,
+            TokenKind::Keyword(Keyword::Method) => SubroutineKind::Method,
 
             _ => return Err(ParseError::UnexpectedToken(token)),
         };
 
-        let return_type = if self.peek_is(&TokenType::Keyword(Keyword::Void)) {
+        let return_kind = if self.peek_is(&TokenKind::Keyword(Keyword::Void)) {
             self.advance();
-            ReturnType::Void
+            ReturnKind::Void
         } else {
-            ReturnType::Type(self.parse_type()?)
+            ReturnKind::Kind(self.parse_kind()?)
         };
 
         let name = self.expect_identifier()?;
         let parameters = self.parse_parameter_list()?;
 
-        self.expect(&TokenType::Symbol(Symbol::LeftBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::LeftBrace))?;
 
         let mut variables = Vec::new();
-        while self.peek_is(&TokenType::Keyword(Keyword::Var)) {
+        while self.peek_is(&TokenKind::Keyword(Keyword::Var)) {
             variables.push(self.parse_var_dec()?);
         }
 
         let statements = self.parse_statement_list()?;
 
-        self.expect(&TokenType::Symbol(Symbol::RightBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::RightBrace))?;
 
         Ok(SubroutineDec {
-            subroutine_type,
-            return_type,
+            kind,
+            return_kind,
             name,
             parameters,
             body: SubroutineBody {
@@ -409,31 +406,31 @@ impl Parser {
     }
 
     fn parse_class(&mut self) -> ParseResult<Class> {
-        self.expect(&TokenType::Keyword(Keyword::Class))?;
+        self.expect(&TokenKind::Keyword(Keyword::Class))?;
         let name = self.expect_identifier()?;
-        self.expect(&TokenType::Symbol(Symbol::LeftBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::LeftBrace))?;
 
         let mut variables = Vec::new();
-        while self.peek_matches(|token_type| {
+        while self.peek_matches(|kind| {
             matches!(
-                token_type,
-                TokenType::Keyword(Keyword::Static | Keyword::Field)
+                kind,
+                TokenKind::Keyword(Keyword::Static | Keyword::Field)
             )
         }) {
             variables.push(self.parse_class_var_dec()?);
         }
 
         let mut subroutines = Vec::new();
-        while self.peek_matches(|token_type| {
+        while self.peek_matches(|kind| {
             matches!(
-                token_type,
-                TokenType::Keyword(Keyword::Constructor | Keyword::Function | Keyword::Method)
+                kind,
+                TokenKind::Keyword(Keyword::Constructor | Keyword::Function | Keyword::Method)
             )
         }) {
             subroutines.push(self.parse_subroutine_dec()?);
         }
 
-        self.expect(&TokenType::Symbol(Symbol::RightBrace))?;
+        self.expect(&TokenKind::Symbol(Symbol::RightBrace))?;
 
         Ok(Class {
             name,

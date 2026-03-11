@@ -6,7 +6,7 @@ pub use error::LexerError;
 use std::str::FromStr;
 
 use crate::JACK_INT_MAX;
-use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenType};
+use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 
 // ── Lexer Result ────────────────────────────────────────
 type LexerResult<T> = std::result::Result<T, LexerError>;
@@ -47,7 +47,7 @@ impl<'src> Lexer<'src> {
         while !self.is_at_end() {
             self.scan_token()?;
         }
-        self.add_token(TokenType::Eof, self.position, self.column);
+        self.add_token(TokenKind::Eof, self.position, self.column);
 
         Ok(self.tokens)
     }
@@ -89,7 +89,7 @@ impl<'src> Lexer<'src> {
             return Err(LexerError::UnterminatedString);
         }
 
-        self.add_token(TokenType::StringConstant(lexeme.into()), start, column);
+        self.add_token(TokenKind::StringConstant(lexeme.into()), start, column);
         Ok(())
     }
 
@@ -104,7 +104,7 @@ impl<'src> Lexer<'src> {
             Err(e) => return Err(LexerError::InvalidInteger(e.to_string())),
         };
 
-        self.add_token(TokenType::IntegerConstant(value), start, column);
+        self.add_token(TokenKind::IntegerConstant(value), start, column);
         Ok(())
     }
 
@@ -112,21 +112,21 @@ impl<'src> Lexer<'src> {
         self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
         let lexeme = self.slice(start, self.position);
 
-        let token_type = match Keyword::from_str(lexeme) {
-            Ok(keyword) => TokenType::Keyword(keyword),
-            Err(()) => TokenType::Identifier(lexeme.into()),
+        let kind = match Keyword::from_str(lexeme) {
+            Ok(keyword) => TokenKind::Keyword(keyword),
+            Err(()) => TokenKind::Identifier(lexeme.into()),
         };
 
-        self.add_token(token_type, start, column);
+        self.add_token(kind, start, column);
     }
 
     fn scan_symbol(&mut self, c: u8, start: usize, column: u16) -> Result<(), LexerError> {
-        let token_type = match Symbol::from_char(c as char) {
-            Some(symbol) => TokenType::Symbol(symbol),
+        let kind = match Symbol::from_char(c as char) {
+            Some(symbol) => TokenKind::Symbol(symbol),
             None => return Err(LexerError::InvalidSymbol((c as char).to_string())),
         };
 
-        self.add_token(token_type, start, column);
+        self.add_token(kind, start, column);
         Ok(())
     }
 
@@ -153,15 +153,15 @@ impl<'src> Lexer<'src> {
     // --- Token Helper ---
 
     #[allow(clippy::cast_possible_truncation)]
-    fn add_token(&mut self, token_type: TokenType, start: usize, column: u16) {
-        let len = if matches!(token_type, TokenType::Eof) {
+    fn add_token(&mut self, kind: TokenKind, start: usize, column: u16) {
+        let len = if matches!(kind, TokenKind::Eof) {
             0
         } else {
             self.position - start
         };
 
         self.tokens.push(Token::new(
-            token_type,
+            kind,
             Span::new(start as u32, len as u16, self.line, column),
         ));
     }
