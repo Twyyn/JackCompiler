@@ -115,11 +115,11 @@ impl JackCompiler {
             let tokens = Lexer::new(&source_file.contents).tokenize()?;
 
             let mut parser = Parser::new(&tokens);
-            let _classes: Vec<Class> = parser.parse()?;
+            let classes: Vec<Class> = parser.parse()?;
 
-            // for class in classes {
-            //     write!(writer, "{class}",)?;
-            // }
+            for class in classes {
+                println!("{class:#?}",);
+            }
         }
 
         // let mut classes = Vec::new();

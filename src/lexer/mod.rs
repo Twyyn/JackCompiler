@@ -3,6 +3,7 @@ pub mod token;
 
 pub use error::LexerError;
 
+use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::JACK_INT_MAX;
@@ -13,7 +14,7 @@ type LexerResult<T> = std::result::Result<T, LexerError>;
 
 pub struct Lexer<'src> {
     source: &'src str,
-    source_as_bytes: &'src [u8],
+    bytes: &'src [u8],
     position: usize,
     line: u32,
     column: u16,
@@ -25,11 +26,11 @@ impl<'src> Lexer<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
             source,
-            source_as_bytes: source.as_bytes(),
+            bytes: source.as_bytes(),
             position: 0,
             line: 1,
             column: 1,
-            tokens: Vec::new(),
+            tokens: Vec::with_capacity(source.len() / 2),
         }
     }
 
@@ -39,7 +40,7 @@ impl<'src> Lexer<'src> {
     ///
     /// # Errors
     ///
-    /// A `TokenError` is returned when the scanner encounters invalid input,
+    /// A `LexerError` is returned when the scanner encounters invalid input,
     /// such as an invalid symbol, unterminated string literal, integer that
     /// cannot be parsed or is out of the allowed range, or any other
     /// malformed token.
@@ -63,8 +64,8 @@ impl<'src> Lexer<'src> {
             b'/' if self.peek() == b'*' || self.peek() == b'/' => {
                 self.skip_comment()?;
             }
-            _ if c.is_ascii_whitespace() => {
-                self.advance_while(|b| b.is_ascii_whitespace());
+            b if b.is_ascii_whitespace() => {
+                self.advance_while(u8::is_ascii_whitespace);
             }
 
             b'"' => self.scan_string(start, column)?,
@@ -80,13 +81,14 @@ impl<'src> Lexer<'src> {
 
     fn scan_string(&mut self, start: usize, column: u16) -> LexerResult<()> {
         let string_start = self.position;
-        self.advance_while(|b| b != b'"');
+        self.advance_while(|b| *b != b'"');
         let lexeme = self.slice(string_start, self.position);
 
-        if !self.is_at_end() && self.peek() == b'"' {
+        while !self.is_at_end() && self.peek() != b'"' {
+            if self.peek() == b'\n' {
+                return Err(LexerError::UnterminatedString);
+            }
             self.advance();
-        } else {
-            return Err(LexerError::UnterminatedString);
         }
 
         self.add_token(TokenKind::StringConstant(lexeme.into()), start, column);
@@ -95,21 +97,22 @@ impl<'src> Lexer<'src> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn scan_integer(&mut self, start: usize, column: u16) -> LexerResult<()> {
-        self.advance_while(|b| b.is_ascii_digit());
+        self.advance_while(u8::is_ascii_digit);
         let lexeme = self.slice(start, self.position);
 
-        let value = match lexeme.parse::<u32>() {
-            Ok(n) if n <= JACK_INT_MAX => n as u16,
-            Ok(n) => return Err(LexerError::IntegerOutOfRange(n)),
-            Err(e) => return Err(LexerError::InvalidInteger(e.to_string())),
-        };
+        let value: u32 = lexeme
+            .parse()
+            .map_err(|e: ParseIntError| LexerError::InvalidInteger(e.to_string()))?;
 
-        self.add_token(TokenKind::IntegerConstant(value), start, column);
+        if value > JACK_INT_MAX {
+            return Err(LexerError::IntegerOutOfRange(value));
+        }
+        self.add_token(TokenKind::IntegerConstant(value as u16), start, column);
         Ok(())
     }
 
     fn scan_word(&mut self, start: usize, column: u16) {
-        self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
+        self.advance_while(|b| b.is_ascii_alphanumeric() || *b == b'_');
         let lexeme = self.slice(start, self.position);
 
         let kind = match Keyword::from_str(lexeme) {
@@ -120,7 +123,7 @@ impl<'src> Lexer<'src> {
         self.add_token(kind, start, column);
     }
 
-    fn scan_symbol(&mut self, c: u8, start: usize, column: u16) -> Result<(), LexerError> {
+    fn scan_symbol(&mut self, c: u8, start: usize, column: u16) -> LexerResult<()> {
         let kind = match Symbol::from_char(c as char) {
             Some(symbol) => TokenKind::Symbol(symbol),
             None => return Err(LexerError::InvalidSymbol((c as char).to_string())),
@@ -146,7 +149,7 @@ impl<'src> Lexer<'src> {
 
             Err(LexerError::UnterminatedComment)
         } else {
-            self.advance_while(|b| b != b'\n');
+            self.advance_while(|b| *b != b'\n');
             Ok(())
         }
     }
@@ -169,27 +172,27 @@ impl<'src> Lexer<'src> {
     // --- Byte Navigation Helpers ---
 
     fn is_at_end(&self) -> bool {
-        self.position >= self.source_as_bytes.len()
+        self.position >= self.source.len()
     }
 
     fn peek(&self) -> u8 {
         if self.is_at_end() {
             b'\0'
         } else {
-            self.source_as_bytes[self.position]
+            self.bytes[self.position]
         }
     }
 
     fn peek_next(&self) -> u8 {
-        if self.position + 1 >= self.source_as_bytes.len() {
+        if self.position + 1 >= self.source.len() {
             b'\0'
         } else {
-            self.source_as_bytes[self.position + 1]
+            self.bytes[self.position + 1]
         }
     }
 
     fn advance(&mut self) -> u8 {
-        let current_byte = self.source_as_bytes[self.position];
+        let current_byte = self.bytes[self.position];
         self.position += 1;
 
         if current_byte == b'\n' {
@@ -202,12 +205,16 @@ impl<'src> Lexer<'src> {
         current_byte
     }
 
-    fn advance_while(&mut self, predicate: fn(u8) -> bool) {
-        while !self.is_at_end() && predicate(self.peek()) {
+    fn advance_while<F>(&mut self, predicate: F)
+    where
+        F: Fn(&u8) -> bool,
+    {
+        while !self.is_at_end() && predicate(&self.peek()) {
             self.advance();
         }
     }
 
+    #[inline]
     fn slice(&self, start: usize, end: usize) -> &'src str {
         &self.source[start..end]
     }
