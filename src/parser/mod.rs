@@ -98,14 +98,13 @@ impl<'t> Parser<'t> {
 
     // ── DataKind Parsing ─────────────────────────────────────────────────
 
-    #[rustfmt::skip]
     fn parse_kind(&mut self) -> ParseResult<DataKind> {
         let token = self.advance_or_end()?;
         match token.kind {
-           TokenKind::Keyword(Keyword::Int)     => Ok(DataKind::Int),
-           TokenKind::Keyword(Keyword::Char)    => Ok(DataKind::Char),
-           TokenKind::Keyword(Keyword::Boolean) => Ok(DataKind::Boolean),
-           TokenKind::Identifier(name)          => Ok(DataKind::Class(name)),
+            TokenKind::Keyword(Keyword::Int) => Ok(DataKind::Int),
+            TokenKind::Keyword(Keyword::Char) => Ok(DataKind::Char),
+            TokenKind::Keyword(Keyword::Boolean) => Ok(DataKind::Boolean),
+            TokenKind::Identifier(name) => Ok(DataKind::Class(name)),
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
