@@ -3,46 +3,28 @@ pub mod token;
 
 pub use error::LexerError;
 
-use std::num::ParseIntError;
 use std::str::{Chars, FromStr};
 
 use crate::JACK_INT_MAX;
 use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 
-// ── Lexer Result ────────────────────────────────────────
+// --- Lexer Result ---
 type LexerResult<T> = std::result::Result<T, LexerError>;
 
-pub struct Cursor<'src> {
-    chars: Chars<'src>,
-}
-
-impl<'src> Cursor<'src> {
-    pub fn new(input: &'src str) -> Self {
-        Self {
-            chars: input.chars(),
-        }
-    }
-}
-
+#[derive(Debug)]
 pub struct Lexer<'src> {
     source: &'src str,
-    cursor: Cursor<'src>,
-
+    chars: Chars<'src>,
+    pos: usize,
 }
 
 impl<'src> Lexer<'src> {
     #[must_use]
     pub fn new(source: &'src str) -> Self {
-        let mut chars_iter = source.chars();
-        let current = chars_iter.next();
-        let next = chars_iter.next();
-
         Self {
             source,
-            chars_iter,
+            chars: source.chars(),
             pos: 0,
-            current,
-            next,
         }
     }
 
@@ -67,50 +49,19 @@ impl<'src> Lexer<'src> {
     // --- Scanner Dispatch ---
 
     fn scan_token(&mut self) -> LexerResult<Token> {
-        while !self.is_at_end() {
-            let start = self.pos;
-            let ch = self.peek();
+        self.skip_comments_whitespace()?;
 
-            match ch {
-                // --- Skip whitespace ---
-                c if c.is_whitespace() => {
-                    self.advance(); // consume first whitespace
-                    self.advance_while(char::is_whitespace); // consume the rest
-                }
+        let start = self.pos;
+        let Some(c) = self.advance() else {
+            return Ok(Token::new(TokenKind::Eof, Span::new(start, self.pos)));
+        };
 
-                // --- Skip comments ---
-                '/' if self.peek_next() == '*' || self.peek_next() == '/' => {
-                    self.advance(); // consume '/'
-                    self.skip_comment()?;
-                }
-
-                // --- Strings ---
-                '"' => {
-                    self.advance(); // consume opening "
-                    return self.scan_string(start);
-                }
-
-                // --- Integers ---
-                '0'..='9' => {
-                    self.advance(); // consume first digit
-                    return self.scan_integer(start);
-                }
-
-                // --- Words / Identifiers ---
-                'a'..='z' | 'A'..='Z' | '_' => {
-                    self.advance(); // consume first char
-                    return self.scan_word(start);
-                }
-
-                // --- Symbols ---
-                _ => {
-                    self.advance(); // consume symbol
-                    return self.scan_symbol(ch, start);
-                }
-            }
+        match c {
+            '"' => self.scan_string(start),
+            '0'..='9' => self.scan_integer(start),
+            'a'..='z' | 'A'..='Z' | '_' => Ok(self.scan_word(start)),
+            _ => self.scan_symbol(c, start),
         }
-
-        Ok(Token::new(TokenKind::Eof, Span::new(self.pos, self.pos)))
     }
 
     // --- Scanner Helpers ---
@@ -118,22 +69,21 @@ impl<'src> Lexer<'src> {
     fn scan_string(&mut self, start: usize) -> LexerResult<Token> {
         let string_start = self.pos;
 
-        while !self.is_at_end() && self.peek() != '"' {
-            if self.peek() == '\n' {
-                return Err(LexerError::UnterminatedString);
-            }
+        while self.peek().is_some_and(|c| c != '"' && c != '\n') {
             self.advance();
         }
 
-        if self.is_at_end() {
-            return Err(LexerError::UnterminatedString);
-        }
+        match self.peek() {
+            Some('\n') | None => return Err(LexerError::UnterminatedString),
+            Some('"') => self.advance(), // consume closing '"'
+            _ => unreachable!(),
+        };
 
-        let lexeme = self.slice(string_start, self.pos);
-        self.advance(); // consume the closing '"'
-
-        let kind = TokenKind::StringConstant(lexeme.into());
-        Ok(Token::new(kind, Span::new(start, self.pos)))
+        let lexeme = self.slice(string_start, self.pos - 1);
+        Ok(Token::new(
+            TokenKind::StringConstant(lexeme.into()),
+            Span::new(start, self.pos),
+        ))
     }
 
     #[allow(clippy::cast_possible_truncation)]
@@ -141,9 +91,7 @@ impl<'src> Lexer<'src> {
         self.advance_while(|c| c.is_ascii_digit());
         let lexeme = self.slice(start, self.pos);
 
-        let value: u64 = lexeme
-            .parse()
-            .map_err(|e: ParseIntError| LexerError::InvalidInteger(e.to_string()))?;
+        let value: u64 = lexeme.parse().map_err(LexerError::from)?;
 
         if value > u64::from(JACK_INT_MAX) {
             return Err(LexerError::IntegerOutOfRange(value));
@@ -155,7 +103,7 @@ impl<'src> Lexer<'src> {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn scan_word(&mut self, start: usize) -> LexerResult<Token> {
+    fn scan_word(&mut self, start: usize) -> Token {
         self.advance_while(|c| c.is_alphanumeric() || c == '_');
         let lexeme = self.slice(start, self.pos);
 
@@ -165,7 +113,7 @@ impl<'src> Lexer<'src> {
             TokenKind::Identifier(lexeme.into())
         };
 
-        Ok(Token::new(kind, Span::new(start, self.pos)))
+        Token::new(kind, Span::new(start, self.pos))
     }
 
     fn scan_symbol(&mut self, ch: char, start: usize) -> LexerResult<Token> {
@@ -177,14 +125,30 @@ impl<'src> Lexer<'src> {
         Ok(Token::new(kind, Span::new(start, self.pos)))
     }
 
-    // --- Comments ---
+    // --- Skip Comment & Whitespace ---
+
+    fn skip_comments_whitespace(&mut self) -> LexerResult<()> {
+        while let Some(c) = self.peek() {
+            match c {
+                c if c.is_whitespace() => {
+                    self.advance_while(char::is_whitespace);
+                }
+                '/' if self.peek_next() == Some('*') || self.peek_next() == Some('/') => {
+                    self.advance();
+                    self.skip_comment()?;
+                }
+                _ => break,
+            }
+        }
+        Ok(())
+    }
 
     fn skip_comment(&mut self) -> LexerResult<()> {
-        if self.peek() == '*' {
+        if self.peek() == Some('*') {
             self.advance(); // skip '*'
 
             while !self.is_at_end() {
-                if self.peek() == '*' && self.peek_next() == '/' {
+                if self.peek() == Some('*') && self.peek_next() == Some('/') {
                     self.advance(); // skip '*'
                     self.advance(); // skip '/'
                     return Ok(());
@@ -199,35 +163,34 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    // --- Byte Navigation Helpers ---
+    // --- Char Navigation Helpers ---
 
     fn is_at_end(&self) -> bool {
-        self.pos == self.source.len()
+        self.chars.as_str().is_empty()
     }
 
-    fn peek(&self) -> char {
-        self.current.unwrap_or('\0')
+    fn peek(&self) -> Option<char> {
+        self.chars.clone().next()
     }
 
-    fn peek_next(&self) -> char {
-        self.next.unwrap_or('\0')
+    fn peek_next(&self) -> Option<char> {
+        let mut iter = self.chars.clone();
+        iter.next();
+        iter.next()
     }
 
-    fn advance(&mut self) -> char {
-        let ch = self.current.unwrap_or('\0');
-        self.pos += ch.len_utf8();
+    fn advance(&mut self) -> Option<char> {
+        let c = self.chars.next()?;
+        self.pos += c.len_utf8();
 
-        self.current = self.next;
-        self.next = self.chars_iter.next();
-
-        ch
+        Some(c)
     }
 
     fn advance_while<F>(&mut self, predicate: F)
     where
         F: Fn(char) -> bool,
     {
-        while predicate(self.peek()) {
+        while self.peek().is_some_and(&predicate) {
             self.advance();
         }
     }

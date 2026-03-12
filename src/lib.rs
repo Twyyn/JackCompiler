@@ -118,7 +118,7 @@ impl JackCompiler {
             let classes: Vec<Class> = parser.parse()?;
 
             for class in classes {
-                println!("{class:#?}",);
+                println!("{class:?}",);
             }
         }
 
