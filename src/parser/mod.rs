@@ -167,10 +167,11 @@ impl<'t> Parser<'t> {
         })
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn parse_term(&mut self) -> Result<Term, ParseError> {
         let token = self.advance_or_end()?;
         match token.kind {
-            TokenKind::IntegerConstant(integer) => Ok(Term::IntegerConstant(integer)),
+            TokenKind::IntegerConstant(int) => Ok(Term::IntegerConstant(int as u16)),
             TokenKind::StringConstant(string) => Ok(Term::StringConstant(string)),
 
             TokenKind::Keyword(keyword) => match keyword {

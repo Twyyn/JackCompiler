@@ -9,7 +9,7 @@ pub type Identifier = Box<str>;
 pub enum TokenKind {
     Keyword(Keyword),
     Symbol(Symbol),
-    IntegerConstant(u16),
+    IntegerConstant(u32),
     StringConstant(Identifier),
     Identifier(Identifier),
     Eof,

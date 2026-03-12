@@ -7,7 +7,7 @@ use crate::JACK_INT_MAX;
 #[non_exhaustive]
 pub enum LexerError {
     /// Integer exceeds Jack's int max of 32767.
-    IntegerOutOfRange(u32),
+    IntegerOutOfRange(u64),
     /// Integer could not be parsed.
     InvalidInteger(String),
     InvalidSymbol(String),
