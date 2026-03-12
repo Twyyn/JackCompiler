@@ -4,7 +4,7 @@ pub mod token;
 pub use error::LexerError;
 
 use std::num::ParseIntError;
-use std::str::FromStr;
+use std::str::{Chars, FromStr};
 
 use crate::JACK_INT_MAX;
 use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
@@ -12,21 +12,37 @@ use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 // ── Lexer Result ────────────────────────────────────────
 type LexerResult<T> = std::result::Result<T, LexerError>;
 
+pub struct Cursor<'src> {
+    chars: Chars<'src>,
+}
+
+impl<'src> Cursor<'src> {
+    pub fn new(input: &'src str) -> Self {
+        Self {
+            chars: input.chars(),
+        }
+    }
+}
+
 pub struct Lexer<'src> {
     source: &'src str,
-    pos: usize,
-    current: Option<char>,
-    next: Option<char>,
+    cursor: Cursor<'src>,
+
 }
 
 impl<'src> Lexer<'src> {
     #[must_use]
     pub fn new(source: &'src str) -> Self {
+        let mut chars_iter = source.chars();
+        let current = chars_iter.next();
+        let next = chars_iter.next();
+
         Self {
             source,
+            chars_iter,
             pos: 0,
-            current: None,
-            next: None,
+            current,
+            next,
         }
     }
 
@@ -45,7 +61,6 @@ impl<'src> Lexer<'src> {
         while !self.is_at_end() {
             tokens.push(self.scan_token()?);
         }
-
         Ok(tokens)
     }
 
@@ -54,35 +69,48 @@ impl<'src> Lexer<'src> {
     fn scan_token(&mut self) -> LexerResult<Token> {
         while !self.is_at_end() {
             let start = self.pos;
-            let ch = self.advance();
+            let ch = self.peek();
 
             match ch {
-                // --- Comments ---
-                '/' if matches!(self.peek(), '*' | '/') => {
+                // --- Skip whitespace ---
+                c if c.is_whitespace() => {
+                    self.advance(); // consume first whitespace
+                    self.advance_while(char::is_whitespace); // consume the rest
+                }
+
+                // --- Skip comments ---
+                '/' if self.peek_next() == '*' || self.peek_next() == '/' => {
+                    self.advance(); // consume '/'
                     self.skip_comment()?;
                 }
 
-                // --- Whitespace ---
-                c if c.is_whitespace() => {
-                    self.advance_while(char::is_whitespace);
+                // --- Strings ---
+                '"' => {
+                    self.advance(); // consume opening "
+                    return self.scan_string(start);
                 }
 
-                // --- Strings ---
-                '"' => return self.scan_string(start),
-
                 // --- Integers ---
-                '0'..='9' => return self.scan_integer(start),
+                '0'..='9' => {
+                    self.advance(); // consume first digit
+                    return self.scan_integer(start);
+                }
 
                 // --- Words / Identifiers ---
-                'a'..='z' | 'A'..='Z' | '_' => return self.scan_word(start),
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    self.advance(); // consume first char
+                    return self.scan_word(start);
+                }
 
                 // --- Symbols ---
-                _ => return self.scan_symbol(ch, start),
+                _ => {
+                    self.advance(); // consume symbol
+                    return self.scan_symbol(ch, start);
+                }
             }
         }
 
-        let kind = TokenKind::Eof;
-        Ok(Token::new(kind, Span::new(self.pos, self.pos)))
+        Ok(Token::new(TokenKind::Eof, Span::new(self.pos, self.pos)))
     }
 
     // --- Scanner Helpers ---
@@ -102,7 +130,6 @@ impl<'src> Lexer<'src> {
         }
 
         let lexeme = self.slice(string_start, self.pos);
-
         self.advance(); // consume the closing '"'
 
         let kind = TokenKind::StringConstant(lexeme.into());
@@ -144,7 +171,7 @@ impl<'src> Lexer<'src> {
     fn scan_symbol(&mut self, ch: char, start: usize) -> LexerResult<Token> {
         let kind = match Symbol::from_char(ch) {
             Some(symbol) => TokenKind::Symbol(symbol),
-            None => return Err(LexerError::InvalidSymbol((ch).to_string())),
+            None => return Err(LexerError::InvalidSymbol(ch.to_string())),
         };
 
         Ok(Token::new(kind, Span::new(start, self.pos)))
@@ -190,9 +217,8 @@ impl<'src> Lexer<'src> {
         let ch = self.current.unwrap_or('\0');
         self.pos += ch.len_utf8();
 
-        let mut iter = self.source[self.pos..].chars();
-        self.current = iter.next();
-        self.next = iter.next();
+        self.current = self.next;
+        self.next = self.chars_iter.next();
 
         ch
     }
