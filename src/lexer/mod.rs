@@ -9,7 +9,8 @@ use crate::JACK_INT_MAX;
 use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 
 // --- Lexer Result ---
-type LexerResult<T> = std::result::Result<T, LexerError>;
+
+pub type LexerResult<T> = std::result::Result<T, LexerError>;
 
 #[derive(Debug)]
 pub struct Lexer<'src> {
