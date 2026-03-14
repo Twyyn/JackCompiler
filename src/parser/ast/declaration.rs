@@ -16,12 +16,12 @@ pub struct Class {
 #[derive(Debug)]
 pub struct ClassVarDec {
     pub names: Vec<Identifier>,
-    pub kind: DataKind,
-    pub var_kind: ClassVarKind,
+    pub kind: Kind,
+    pub type_: Type,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ClassVarKind {
+pub enum Kind {
     Static,
     Field,
 }
@@ -31,7 +31,7 @@ pub enum ClassVarKind {
 #[derive(Debug)]
 pub struct VarDec {
     pub names: Vec<Identifier>,
-    pub kind: DataKind,
+    pub type_: Type,
 }
 
 // --- Subroutine Declaration ---
@@ -40,7 +40,7 @@ pub struct VarDec {
 pub struct SubroutineDec {
     pub name: Identifier,
     pub kind: SubroutineKind,
-    pub return_kind: ReturnKind,
+    pub return_type: ReturnType,
     pub parameters: Vec<Parameter>,
     pub body: SubroutineBody,
 }
@@ -70,10 +70,10 @@ pub struct SubroutineCall {
     pub args: Vec<Expr>,
 }
 
-// --- Data Types(Kind) ---
+// --- Varable Type(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DataKind {
+pub enum Type {
     Int,
     Char,
     Boolean,
@@ -83,9 +83,9 @@ pub enum DataKind {
 // --- Jack Return Types(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReturnKind {
+pub enum ReturnType {
     Void,
-    Kind(DataKind),
+    Type(Type),
 }
 
 // --- Parameter/Argument ---
@@ -93,7 +93,7 @@ pub enum ReturnKind {
 #[derive(Debug)]
 pub struct Parameter {
     pub name: Identifier,
-    pub kind: DataKind,
+    pub type_: Type,
 }
 
 // impl fmt::Display for Class {

@@ -1,9 +1,9 @@
 pub mod error;
 pub mod lexer;
 pub mod parser;
+pub mod codegen;
 
 use std::fs;
-#[allow(unused_imports)]
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 

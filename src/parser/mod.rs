@@ -4,7 +4,7 @@ pub mod error;
 use crate::lexer::token::kind::Identifier;
 use crate::lexer::token::{Keyword, Symbol, Token, TokenKind};
 use crate::parser::ast::declaration::{
-    Class, ClassVarDec, ClassVarKind, DataKind, Parameter, ReturnKind, SubroutineBody,
+    Class, ClassVarDec, Kind, Type, Parameter, ReturnType, SubroutineBody,
     SubroutineCall, SubroutineDec, SubroutineKind, VarDec,
 };
 use crate::parser::ast::expression::{Expr, KeywordConstant, Term, UnaryOp};
@@ -98,13 +98,14 @@ impl<'t> Parser<'t> {
 
     // ── DataKind Parsing ─────────────────────────────────────────────────
 
-    fn parse_kind(&mut self) -> ParseResult<DataKind> {
+    #[rustfmt::skip]
+    fn parse_type(&mut self) -> ParseResult<Type> {
         let token = self.advance_or_end()?;
         match token.kind {
-            TokenKind::Keyword(Keyword::Int) => Ok(DataKind::Int),
-            TokenKind::Keyword(Keyword::Char) => Ok(DataKind::Char),
-            TokenKind::Keyword(Keyword::Boolean) => Ok(DataKind::Boolean),
-            TokenKind::Identifier(name) => Ok(DataKind::Class(name)),
+           TokenKind::Keyword(Keyword::Int)     => Ok(Type::Int),
+           TokenKind::Keyword(Keyword::Char)    => Ok(Type::Char),
+           TokenKind::Keyword(Keyword::Boolean) => Ok(Type::Boolean),
+           TokenKind::Identifier(name)          => Ok(Type::Class(name)),
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
@@ -113,10 +114,10 @@ impl<'t> Parser<'t> {
     // ── Comma-Separated Lists ────────────────────────────────────────
 
     fn parse_parameter(&mut self) -> ParseResult<Parameter> {
-        let kind = self.parse_kind()?;
         let name = self.expect_identifier()?;
+        let type_ = self.parse_type()?;
 
-        Ok(Parameter { name, kind })
+        Ok(Parameter { name, type_ })
     }
 
     fn parse_parameter_list(&mut self) -> Result<Vec<Parameter>, ParseError> {
@@ -326,7 +327,7 @@ impl<'t> Parser<'t> {
 
     fn parse_var_dec(&mut self) -> ParseResult<VarDec> {
         self.expect(&TokenKind::Keyword(Keyword::Var))?;
-        let kind = self.parse_kind()?;
+        let type_ = self.parse_type()?;
         let mut names = vec![self.expect_identifier()?];
         while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
             self.advance();
@@ -334,18 +335,18 @@ impl<'t> Parser<'t> {
         }
         self.expect(&TokenKind::Symbol(Symbol::Semicolon))?;
 
-        Ok(VarDec { names, kind })
+        Ok(VarDec { names, type_ })
     }
 
     fn parse_class_var_dec(&mut self) -> Result<ClassVarDec, ParseError> {
         let token = self.advance_or_end()?;
-        let var_kind = match token.kind {
-            TokenKind::Keyword(Keyword::Static) => ClassVarKind::Static,
-            TokenKind::Keyword(Keyword::Field) => ClassVarKind::Field,
+        let kind = match token.kind {
+            TokenKind::Keyword(Keyword::Static) => Kind::Static,
+            TokenKind::Keyword(Keyword::Field) => Kind::Field,
             _ => return Err(ParseError::UnexpectedToken(token)),
         };
 
-        let kind = self.parse_kind()?;
+        let type_ = self.parse_type()?;
         let mut names = vec![self.expect_identifier()?];
         while self.peek_is(&TokenKind::Symbol(Symbol::Comma)) {
             self.advance();
@@ -356,7 +357,7 @@ impl<'t> Parser<'t> {
         Ok(ClassVarDec {
             names,
             kind,
-            var_kind,
+            type_,
         })
     }
 
@@ -370,11 +371,11 @@ impl<'t> Parser<'t> {
             _ => return Err(ParseError::UnexpectedToken(token)),
         };
 
-        let return_kind = if self.peek_is(&TokenKind::Keyword(Keyword::Void)) {
+        let return_type = if self.peek_is(&TokenKind::Keyword(Keyword::Void)) {
             self.advance();
-            ReturnKind::Void
+            ReturnType::Void
         } else {
-            ReturnKind::Kind(self.parse_kind()?)
+            ReturnType::Type(self.parse_type()?)
         };
 
         let name = self.expect_identifier()?;
@@ -393,7 +394,7 @@ impl<'t> Parser<'t> {
 
         Ok(SubroutineDec {
             kind,
-            return_kind,
+            return_type,
             name,
             parameters,
             body: SubroutineBody {
