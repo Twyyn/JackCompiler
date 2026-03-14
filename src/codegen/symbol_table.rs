@@ -1,14 +1,13 @@
-use crate::lexer::token::kind::Identifier;
 use std::{collections::HashMap, fmt::{self, Display}};
 
 // --- Type ---
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub enum Type<'t> {
     Int,
     Char,
     Boolean,
-    Class(Identifier),
+    Class(&'t str),
 }
 
 // --- Kind ---
@@ -36,8 +35,8 @@ impl fmt::Display for Kind {
 // --- Symbol Table Entry ---
 
 #[derive(Debug)]
-pub struct Entry {
-    type_: Type,
+pub struct Entry<'t> {
+    type_: Type<'t>,
     kind: Kind,
     index: usize,
 }
@@ -45,7 +44,7 @@ pub struct Entry {
 // --- Scope ---
 #[derive(Debug, Default)]
 pub struct Scope<'s> {
-    entries: HashMap<&'s Identifier, Entry>,
+    entries: HashMap<&'s &'t str, Entry>,
     counts: [usize; 4],
 }
 
@@ -112,4 +111,3 @@ impl<'s> SymbolTable<'s> {
         self.subroutine.reset();
     }
 }
-

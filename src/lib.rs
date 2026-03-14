@@ -112,14 +112,12 @@ impl JackCompiler {
             let file = fs::File::create(source_file.output_path)?;
             let mut _writer = BufWriter::new(file);
 
-            let tokens = Lexer::new(&source_file.contents).tokenize()?;
+            let lexer = Lexer::new(&source_file.contents);
 
-            let mut parser = Parser::new(&tokens);
-            let classes: Vec<Class> = parser.parse()?;
+            //let mut parser = Parser::new(&tokens);
+            //let classes: Vec<Class> = parser.parse()?;
 
-            for class in classes {
-                println!("{class:?}",);
-            }
+            
         }
 
         // let mut classes = Vec::new();

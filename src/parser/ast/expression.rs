@@ -1,18 +1,16 @@
 use super::SubroutineCall;
 
-use crate::lexer::token::kind::Identifier;
-
 // --- Expression ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Expr {
-    pub term: Term,
-    pub op: Vec<(BinaryOp, Term)>,
+pub struct Expr<'src> {
+    pub term: Term<'src>,
+    pub op: Vec<(BinaryOp, Term<'src>)>,
 }
 
-impl Expr {
+impl<'src> Expr<'src> {
     #[must_use]
-    pub fn new(term: Term, op: Vec<(BinaryOp, Term)>) -> Self {
+    pub fn new(term: Term<'src>, op: Vec<(BinaryOp, Term<'src>)>) -> Self {
         Self { term, op }
     }
 }
@@ -21,15 +19,15 @@ impl Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub enum Term {
+pub enum Term<'src> {
     IntegerConstant(u16),
-    StringConstant(Identifier),
+    StringConstant(&'src str),
     KeywordConstant(KeywordConstant),
-    Variable(Identifier),
-    ArrayAccess(Identifier, Box<Expr>),
-    SubroutineCall(SubroutineCall),
-    Grouped(Box<Expr>),
-    Unary(UnaryOp, Box<Term>),
+    Variable(&'src str),
+    ArrayAccess(&'src str, Box<Expr<'src>>),
+    SubroutineCall(SubroutineCall<'src>),
+    Grouped(Box<Expr<'src>>),
+    Unary(UnaryOp, Box<Term<'src>>),
 }
 
 // --- Keyword Constant ---
@@ -66,8 +64,8 @@ pub enum BinaryOp {
     Div,
     And,
     Or,
-    GreaterThan,
-    LessThan,
+    Gt,
+    Lt,
     Equal,
 }
 
@@ -81,8 +79,8 @@ impl BinaryOp {
             Self::Div => '/',
             Self::And => '&',
             Self::Or => '|',
-            Self::GreaterThan => '>',
-            Self::LessThan => '<',
+            Self::Gt => '>',
+            Self::Lt => '<',
             Self::Equal => '=',
         }
     }

@@ -3,19 +3,14 @@ pub mod token;
 
 pub use error::LexerError;
 
-use std::str::{Chars, FromStr};
+//use std::str::FromStr;
 
 use crate::JACK_INT_MAX;
 use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 
-// --- Lexer Result ---
-
-pub type LexerResult<T> = std::result::Result<T, LexerError>;
-
 #[derive(Debug)]
 pub struct Lexer<'src> {
-    source: &'src str,
-    chars: Chars<'src>,
+    bytes: &'src [u8],
     pos: usize,
 }
 
@@ -23,73 +18,54 @@ impl<'src> Lexer<'src> {
     #[must_use]
     pub fn new(source: &'src str) -> Self {
         Self {
-            source,
-            chars: source.chars(),
+            bytes: source.as_bytes(),
             pos: 0,
         }
     }
 
-    /// Convert the source text into a sequence of lexical tokens.
-    ///
-    /// The lexer scans the input byte-by-byte and emits `Token` instances.
-    ///
-    /// # Errors
-    ///
-    /// A `LexerError` is returned when the scanner encounters invalid input,
-    /// such as an invalid symbol, unterminated string literal, integer that
-    /// cannot be parsed or is out of the allowed range, or any other
-    /// malformed token.
-    pub fn tokenize(mut self) -> LexerResult<Vec<Token>> {
-        let mut tokens = Vec::new();
-        while !self.is_at_end() {
-            tokens.push(self.scan_token()?);
-        }
-        Ok(tokens)
-    }
-
     // --- Scanner Dispatch ---
 
-    fn scan_token(&mut self) -> LexerResult<Token> {
+    fn scan_token(&mut self) -> Result<Token<'src>, LexerError> {
         self.skip_comments_whitespace()?;
 
         let start = self.pos;
-        let Some(c) = self.advance() else {
+        let Some(b) = self.advance() else {
             return Ok(Token::new(TokenKind::Eof, Span::new(start, self.pos)));
         };
 
-        match c {
-            '"' => self.scan_string(start),
-            '0'..='9' => self.scan_integer(start),
-            'a'..='z' | 'A'..='Z' | '_' => Ok(self.scan_word(start)),
-            _ => self.scan_symbol(c, start),
+        match b {
+            b'"' => self.scan_string(start),
+            b'0'..=b'9' => self.scan_integer(start),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => Ok(self.scan_word(start)),
+            _ => self.scan_symbol(b, start),
         }
     }
 
     // --- Scanner Helpers ---
 
-    fn scan_string(&mut self, start: usize) -> LexerResult<Token> {
+    fn scan_string(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
         let string_start = self.pos;
 
-        while self.peek().is_some_and(|c| c != '"' && c != '\n') {
+        while self.peek().is_some_and(|b| b != b'"' && b != b'\n') {
             self.advance();
         }
 
         match self.peek() {
-            Some('\n') | None => return Err(LexerError::UnterminatedString),
-            Some('"') => self.advance(), // consume closing '"'
+            Some(b'\n') | None => return Err(LexerError::UnterminatedString),
+            Some(b'"') => self.advance(), // consume closing '"'
             _ => unreachable!(),
         };
 
         let lexeme = self.slice(string_start, self.pos - 1);
         Ok(Token::new(
             TokenKind::StringConstant(lexeme.into()),
-            Span::new(start, self.pos),
+            Span::new(start, self.pos - start),
         ))
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    fn scan_integer(&mut self, start: usize) -> LexerResult<Token> {
-        self.advance_while(|c| c.is_ascii_digit());
+    fn scan_integer(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
+        self.advance_while(|b| b.is_ascii_digit());
         let lexeme = self.slice(start, self.pos);
 
         let value: u64 = lexeme.parse().map_err(LexerError::from)?;
@@ -100,41 +76,40 @@ impl<'src> Lexer<'src> {
 
         let kind = TokenKind::IntegerConstant(value as u32);
 
-        Ok(Token::new(kind, Span::new(start, self.pos)))
+        Ok(Token::new(kind, Span::new(start, self.pos - start)))
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn scan_word(&mut self, start: usize) -> Token {
-        self.advance_while(|c| c.is_alphanumeric() || c == '_');
+    fn scan_word(&mut self, start: usize) -> Token<'src> {
+        self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
         let lexeme = self.slice(start, self.pos);
 
-        let kind = if let Ok(keyword) = Keyword::from_str(lexeme) {
-            TokenKind::Keyword(keyword)
-        } else {
-            TokenKind::Identifier(lexeme.into())
+        let kind = match Keyword::from_slice(lexeme) {
+            Some(kw) => TokenKind::Keyword(kw),
+            None => TokenKind::Identifier(lexeme),
         };
 
-        Token::new(kind, Span::new(start, self.pos))
+        Token::new(kind, Span::new(start, self.pos - start))
     }
 
-    fn scan_symbol(&mut self, ch: char, start: usize) -> LexerResult<Token> {
-        let kind = match Symbol::from_char(ch) {
+    fn scan_symbol(&mut self, b: u8, start: usize) -> Result<Token<'src>, LexerError> {
+        let kind = match Symbol::from_byte(b) {
             Some(symbol) => TokenKind::Symbol(symbol),
-            None => return Err(LexerError::InvalidSymbol(ch.to_string())),
+            None => return Err(LexerError::InvalidSymbol(b.to_string())),
         };
 
-        Ok(Token::new(kind, Span::new(start, self.pos)))
+        Ok(Token::new(kind, Span::new(start, self.pos - start)))
     }
 
     // --- Skip Comment & Whitespace ---
 
-    fn skip_comments_whitespace(&mut self) -> LexerResult<()> {
-        while let Some(c) = self.peek() {
-            match c {
-                c if c.is_whitespace() => {
-                    self.advance_while(char::is_whitespace);
+    fn skip_comments_whitespace(&mut self) -> Result<(), LexerError> {
+        while let Some(b) = self.peek() {
+            match b {
+                b if b.is_ascii_whitespace() => {
+                    self.advance_while(|b| b.is_ascii_whitespace());
                 }
-                '/' if self.peek_next() == Some('*') || self.peek_next() == Some('/') => {
+                b'/' if self.peek_next() == Some(b'*') || self.peek_next() == Some(b'/') => {
                     self.advance();
                     self.skip_comment()?;
                 }
@@ -144,12 +119,12 @@ impl<'src> Lexer<'src> {
         Ok(())
     }
 
-    fn skip_comment(&mut self) -> LexerResult<()> {
-        if self.peek() == Some('*') {
+    fn skip_comment(&mut self) -> Result<(), LexerError> {
+        if self.peek() == Some(b'*') {
             self.advance(); // skip '*'
 
             while !self.is_at_end() {
-                if self.peek() == Some('*') && self.peek_next() == Some('/') {
+                if self.peek() == Some(b'*') && self.peek_next() == Some(b'/') {
                     self.advance(); // skip '*'
                     self.advance(); // skip '/'
                     return Ok(());
@@ -159,7 +134,7 @@ impl<'src> Lexer<'src> {
 
             Err(LexerError::UnterminatedComment)
         } else {
-            self.advance_while(|c| c != '\n');
+            self.advance_while(|c| c != b'\n');
             Ok(())
         }
     }
@@ -167,29 +142,26 @@ impl<'src> Lexer<'src> {
     // --- Char Navigation Helpers ---
 
     fn is_at_end(&self) -> bool {
-        self.chars.as_str().is_empty()
+        self.pos == self.bytes.len()
     }
 
-    fn peek(&self) -> Option<char> {
-        self.chars.clone().next()
+    fn peek(&self) -> Option<u8> {
+        self.bytes.get(self.pos).copied()
     }
 
-    fn peek_next(&self) -> Option<char> {
-        let mut iter = self.chars.clone();
-        iter.next();
-        iter.next()
+    fn peek_next(&self) -> Option<u8> {
+        self.bytes.get(self.pos + 1).copied()
     }
 
-    fn advance(&mut self) -> Option<char> {
-        let c = self.chars.next()?;
-        self.pos += c.len_utf8();
-
-        Some(c)
+    fn advance(&mut self) -> Option<u8> {
+        let b = self.peek()?;
+        self.pos += 1;
+        Some(b)
     }
 
     fn advance_while<F>(&mut self, predicate: F)
     where
-        F: Fn(char) -> bool,
+        F: Fn(u8) -> bool,
     {
         while self.peek().is_some_and(&predicate) {
             self.advance();
@@ -198,6 +170,6 @@ impl<'src> Lexer<'src> {
 
     #[inline]
     fn slice(&self, start: usize, end: usize) -> &'src str {
-        &self.source[start..end]
+        unsafe { str::from_utf8_unchecked(&self.bytes[start..end]) }
     }
 }

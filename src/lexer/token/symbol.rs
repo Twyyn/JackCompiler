@@ -2,7 +2,6 @@ use std::fmt;
 
 use crate::parser::ast::BinaryOp;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Symbol {
@@ -21,35 +20,35 @@ pub enum Symbol {
     Slash,
     Ampersand,
     Pipe,
-    GreaterThan,
-    LessThan,
+    Gt,
+    Lt,
     Equal,
     Tilde,
 }
 
 impl Symbol {
     #[must_use]
-    pub fn from_char(c: char) -> Option<Self> {
-        match c {
-            '{' => Some(Self::LeftBrace),
-            '}' => Some(Self::RightBrace),
-            '(' => Some(Self::LeftParen),
-            ')' => Some(Self::RightParen),
-            '[' => Some(Self::LeftBracket),
-            ']' => Some(Self::RightBracket),
-            '.' => Some(Self::Dot),
-            ',' => Some(Self::Comma),
-            ';' => Some(Self::Semicolon),
-            '+' => Some(Self::Plus),
-            '-' => Some(Self::Minus),
-            '*' => Some(Self::Star),
-            '/' => Some(Self::Slash),
-            '&' => Some(Self::Ampersand),
-            '|' => Some(Self::Pipe),
-            '>' => Some(Self::GreaterThan),
-            '<' => Some(Self::LessThan),
-            '=' => Some(Self::Equal),
-            '~' => Some(Self::Tilde),
+    pub fn from_byte(b: u8) -> Option<Self> {
+        match b {
+            b'{' => Some(Self::LeftBrace),
+            b'}' => Some(Self::RightBrace),
+            b'(' => Some(Self::LeftParen),
+            b')' => Some(Self::RightParen),
+            b'[' => Some(Self::LeftBracket),
+            b']' => Some(Self::RightBracket),
+            b'.' => Some(Self::Dot),
+            b',' => Some(Self::Comma),
+            b';' => Some(Self::Semicolon),
+            b'+' => Some(Self::Plus),
+            b'-' => Some(Self::Minus),
+            b'*' => Some(Self::Star),
+            b'/' => Some(Self::Slash),
+            b'&' => Some(Self::Ampersand),
+            b'|' => Some(Self::Pipe),
+            b'>' => Some(Self::Lt),
+            b'<' => Some(Self::Gt),
+            b'=' => Some(Self::Equal),
+            b'~' => Some(Self::Tilde),
             _ => None,
         }
     }
@@ -72,8 +71,8 @@ impl Symbol {
             Self::Slash => '/',
             Self::Ampersand => '&',
             Self::Pipe => '|',
-            Self::GreaterThan => '>',
-            Self::LessThan => '<',
+            Self::Lt => '>',
+            Self::Gt => '<',
             Self::Equal => '=',
             Self::Tilde => '~',
         }
@@ -88,8 +87,8 @@ impl Symbol {
             Symbol::Slash => Some(BinaryOp::Div),
             Symbol::Ampersand => Some(BinaryOp::And),
             Symbol::Pipe => Some(BinaryOp::Or),
-            Symbol::GreaterThan => Some(BinaryOp::GreaterThan),
-            Symbol::LessThan => Some(BinaryOp::LessThan),
+            Symbol::Gt => Some(BinaryOp::Gt),
+            Symbol::Lt => Some(BinaryOp::Lt),
             Symbol::Equal => Some(BinaryOp::Equal),
             _ => None,
         }

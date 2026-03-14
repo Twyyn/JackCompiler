@@ -1,23 +1,21 @@
-use crate::lexer::token::kind::Identifier;
-
 use super::{Expr, Statement};
 
 // --- Class ---
 
 #[derive(Debug)]
-pub struct Class {
-    pub name: Identifier,
-    pub variables: Vec<ClassVarDec>,
-    pub subroutines: Vec<SubroutineDec>,
+pub struct Class<'src> {
+    pub name: &'src str,
+    pub variables: Vec<ClassVarDec<'src>>,
+    pub subroutines: Vec<SubroutineDec<'src>>,
 }
 
 // --- Class Variable Declaration ---
 
 #[derive(Debug)]
-pub struct ClassVarDec {
-    pub names: Vec<Identifier>,
+pub struct ClassVarDec<'src> {
+    pub names: Vec<&'src str>,
     pub kind: Kind,
-    pub type_: Type,
+    pub type_: Type<'src>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,20 +27,20 @@ pub enum Kind {
 // --- Variable Declaration ---
 
 #[derive(Debug)]
-pub struct VarDec {
-    pub names: Vec<Identifier>,
-    pub type_: Type,
+pub struct VarDec<'src> {
+    pub names: Vec<&'src str>,
+    pub type_: Type<'src>,
 }
 
 // --- Subroutine Declaration ---
 
 #[derive(Debug)]
-pub struct SubroutineDec {
-    pub name: Identifier,
+pub struct SubroutineDec<'src> {
+    pub name: &'src str,
     pub kind: SubroutineKind,
-    pub return_type: ReturnType,
-    pub parameters: Vec<Parameter>,
-    pub body: SubroutineBody,
+    pub return_type: ReturnType<'src>,
+    pub parameters: Vec<Parameter<'src>>,
+    pub body: SubroutineBody<'src>,
 }
 // --- Subroutine Types(Kind)---
 
@@ -56,44 +54,44 @@ pub enum SubroutineKind {
 // --- Subroutine Body ---
 
 #[derive(Debug)]
-pub struct SubroutineBody {
-    pub variables: Vec<VarDec>,
-    pub statements: Vec<Statement>,
+pub struct SubroutineBody<'src> {
+    pub variables: Vec<VarDec<'src>>,
+    pub statements: Vec<Statement<'src>>,
 }
 
 // --- Subroutine Call Declaration ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SubroutineCall {
-    pub name: Identifier,
-    pub receiver: Option<Identifier>,
-    pub args: Vec<Expr>,
+pub struct SubroutineCall<'src> {
+    pub name: &'src str,
+    pub receiver: Option<&'src str>,
+    pub args: Vec<Expr<'src>>,
 }
 
 // --- Varable Type(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Type {
+pub enum Type<'src> {
     Int,
     Char,
     Boolean,
-    Class(Identifier),
+    Class(&'src str),
 }
 
 // --- Jack Return Types(Kind) ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ReturnType {
+pub enum ReturnType<'src> {
     Void,
-    Type(Type),
+    Type(Type<'src>),
 }
 
 // --- Parameter/Argument ---
 
 #[derive(Debug)]
-pub struct Parameter {
-    pub name: Identifier,
-    pub type_: Type,
+pub struct Parameter<'src> {
+    pub name: &'src str,
+    pub type_: Type<'src>,
 }
 
 // impl fmt::Display for Class {

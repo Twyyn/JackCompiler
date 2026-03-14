@@ -1,5 +1,4 @@
 use std::fmt;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -27,63 +26,63 @@ pub enum Keyword {
     Return,
 }
 
-impl FromStr for Keyword {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "class" => Ok(Self::Class),
-            "constructor" => Ok(Self::Constructor),
-            "function" => Ok(Self::Function),
-            "method" => Ok(Self::Method),
-            "field" => Ok(Self::Field),
-            "static" => Ok(Self::Static),
-            "var" => Ok(Self::Var),
-            "int" => Ok(Self::Int),
-            "char" => Ok(Self::Char),
-            "boolean" => Ok(Self::Boolean),
-            "void" => Ok(Self::Void),
-            "true" => Ok(Self::True),
-            "false" => Ok(Self::False),
-            "null" => Ok(Self::Null),
-            "this" => Ok(Self::This),
-            "let" => Ok(Self::Let),
-            "do" => Ok(Self::Do),
-            "if" => Ok(Self::If),
-            "else" => Ok(Self::Else),
-            "while" => Ok(Self::While),
-            "return" => Ok(Self::Return),
-            _ => Err(()),
+impl Keyword {
+    #[rustfmt::skip]
+    pub fn from_slice(slice: &str) -> Option<Keyword> {
+        match slice {
+            "class"       => Some(Self::Class),
+            "constructor" => Some(Self::Constructor),
+            "function"    => Some(Self::Function),
+            "method"      => Some(Self::Method),
+            "field"       => Some(Self::Field),
+            "static"      => Some(Self::Static),
+            "var"         => Some(Self::Var),
+            "int"         => Some(Self::Int),
+            "char"        => Some(Self::Char),
+            "boolean"     => Some(Self::Boolean),
+            "void"        => Some(Self::Void),
+            "true"        => Some(Self::True),
+            "false"       => Some(Self::False),
+            "null"        => Some(Self::Null),
+            "this"        => Some(Self::This),
+            "let"         => Some(Self::Let),
+            "do"          => Some(Self::Do),
+            "if"          => Some(Self::If),
+            "else"        => Some(Self::Else),
+            "while"       => Some(Self::While),
+            "return"      => Some(Self::Return),
+            _             => None,
         }
     }
 }
 
 impl fmt::Display for Keyword {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::Class => "class",
+            Self::Class       => "class",
             Self::Constructor => "constructor",
-            Self::Function => "function",
-            Self::Method => "method",
-            Self::Field => "field",
-            Self::Static => "static",
-            Self::Var => "var",
-            Self::Int => "int",
-            Self::Char => "char",
-            Self::Boolean => "boolean",
-            Self::Void => "void",
-            Self::True => "true",
-            Self::False => "false",
-            Self::Null => "null",
-            Self::This => "this",
-            Self::Let => "let",
-            Self::Do => "do",
-            Self::If => "if",
-            Self::Else => "else",
-            Self::While => "while",
-            Self::Return => "return",
+            Self::Function    => "function",
+            Self::Method      => "method",
+            Self::Field       => "field",
+            Self::Static      => "static",
+            Self::Var         => "var",
+            Self::Int         => "int",
+            Self::Char        => "char",
+            Self::Boolean     => "boolean",
+            Self::Void        => "void",
+            Self::True        => "true",
+            Self::False       => "false",
+            Self::Null        => "null",
+            Self::This        => "this",
+            Self::Let         => "let",
+            Self::Do          => "do",
+            Self::If          => "if",
+            Self::Else        => "else",
+            Self::While       => "while",
+            Self::Return      => "return",
         };
 
-        write!(f, "{s}")
+        f.write_str(s)
     }
 }

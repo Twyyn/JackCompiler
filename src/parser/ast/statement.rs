@@ -1,56 +1,54 @@
-use crate::lexer::token::kind::Identifier;
-
 use super::{Expr, SubroutineCall};
 
 // --- Statements ---
 
 #[derive(Debug)]
-pub enum Statement {
-    Let(LetStmt),
-    If(IfStmt),
-    While(WhileStmt),
-    Do(DoStmt),
-    Return(ReturnStmt),
+pub enum Statement<'src> {
+    Let(LetStmt<'src>),
+    If(IfStmt<'src>),
+    While(WhileStmt<'src>),
+    Do(DoStmt<'src>),
+    Return(ReturnStmt<'src>),
 }
 
 // --- Let ---
 
 #[derive(Debug)]
-pub struct LetStmt {
-    pub name: Identifier,
-    pub index: Option<Expr>,
-    pub expr: Expr,
+pub struct LetStmt<'src> {
+    pub name: &'src str,
+    pub index: Option<Expr<'src>>,
+    pub expr: Expr<'src>,
 }
 
 // --- If ---
 
 #[derive(Debug)]
-pub struct IfStmt {
-    pub condition: Expr,
-    pub if_body: Vec<Statement>,
-    pub else_body: Option<Vec<Statement>>,
+pub struct IfStmt<'src> {
+    pub condition: Expr<'src>,
+    pub if_body: Vec<Statement<'src>>,
+    pub else_body: Option<Vec<Statement<'src>>>,
 }
 
 // --- While ---
 
 #[derive(Debug)]
-pub struct WhileStmt {
-    pub condition: Expr,
-    pub body: Vec<Statement>,
+pub struct WhileStmt<'src> {
+    pub condition: Expr<'src>,
+    pub body: Vec<Statement<'src>>,
 }
 
 // --- Do ---
 
 #[derive(Debug)]
-pub struct DoStmt {
-    pub subroutine_call: SubroutineCall,
+pub struct DoStmt<'src> {
+    pub subroutine_call: SubroutineCall<'src>,
 }
 
 // --- Return ---
 
 #[derive(Debug)]
-pub struct ReturnStmt {
-    pub expr: Option<Expr>,
+pub struct ReturnStmt<'src> {
+    pub expr: Option<Expr<'src>>,
 }
 
 // // --- Display Impls ---

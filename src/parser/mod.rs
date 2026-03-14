@@ -1,7 +1,7 @@
 pub mod ast;
 pub mod error;
 
-use crate::lexer::token::kind::Identifier;
+
 use crate::lexer::token::{Keyword, Symbol, Token, TokenKind};
 use crate::parser::ast::declaration::{
     Class, ClassVarDec, Kind, Type, Parameter, ReturnType, SubroutineBody,
