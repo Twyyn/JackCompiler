@@ -3,13 +3,13 @@ use std::fmt;
 use crate::lexer::token::Token;
 
 #[derive(Debug)]
-pub enum ParseError {
-    InvalidToken(Token),
-    UnexpectedToken(Token),
+pub enum ParseError<'src> {
+    InvalidToken(Token<'src>),
+    UnexpectedToken(Token<'src>),
     UnexpectedEof,
 }
 
-impl fmt::Display for ParseError {
+impl<'src> fmt::Display for ParseError<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidToken(token) => write!(f, "invalid token {token}"),
@@ -19,4 +19,4 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl std::error::Error for ParseError<'_> {}

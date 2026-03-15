@@ -11,21 +11,19 @@ use crate::parser::ast::expression::{Expr, KeywordConstant, Term, UnaryOp};
 use crate::parser::ast::statement::{DoStmt, IfStmt, LetStmt, ReturnStmt, Statement, WhileStmt};
 use crate::parser::error::ParseError;
 
-// ── Parse Result ────────────────────────────────────────
-type ParseResult<T> = std::result::Result<T, ParseError>;
 
 #[derive(Debug)]
-pub struct Parser<'t> {
-    tokens: &'t [Token],
-    position: usize,
+pub struct Parser<'src> {
+    tokens: &'src [Token<'src>],
+    cursor: usize,
 }
 
-impl<'t> Parser<'t> {
+impl<'src> Parser<'src> {
     #[must_use]
-    pub fn new(tokens: &'t [Token]) -> Self {
+    pub fn new(tokens: &'src [Token<'src>]) -> Self {
         Self {
             tokens,
-            position: 0,
+            cursor: 0,
         }
     }
 
@@ -38,7 +36,7 @@ impl<'t> Parser<'t> {
     ///
     /// Propagates any [`ParseError`] raised by [`parse_class`](Self::parse_class),
     /// which includes unexpected or missing tokens at any level of the grammar.
-    pub fn parse(&mut self) -> ParseResult<Vec<Class>> {
+    pub fn parse(&mut self) -> Result<Vec<Class>, ParseError> {
         let mut classes = Vec::new();
         while !self.is_at_end() {
             classes.push(self.parse_class()?);
@@ -48,14 +46,14 @@ impl<'t> Parser<'t> {
     }
 
     fn is_at_end(&self) -> bool {
-        self.position >= self.tokens.len()
+        self.cursor >= self.tokens.len()
             || self.peek_matches(|kind| matches!(kind, TokenKind::Eof))
     }
 
     // ── Token Navigation ─────────────────────────────────────────────
 
-    fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.position)
+    fn peek(&self) -> Option<&'src Token> {
+        self.tokens.get(self.cursor)
     }
 
     fn peek_is(&self, expected: &TokenKind) -> bool {
@@ -66,10 +64,10 @@ impl<'t> Parser<'t> {
         self.peek().is_some_and(|token| f(&token.kind))
     }
 
-    fn advance(&mut self) -> Option<Token> {
-        if self.position < self.tokens.len() {
-            let token = self.tokens[self.position].clone();
-            self.position += 1;
+    fn advance(&mut self) -> Option<Token<'src>> {
+        if self.cursor < self.tokens.len() {
+            let token = self.peek()?;
+            self.cursor += 1;
             Some(token)
         } else {
             None

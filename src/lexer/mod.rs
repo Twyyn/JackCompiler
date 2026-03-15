@@ -11,7 +11,7 @@ use crate::lexer::token::{Keyword, Span, Symbol, Token, TokenKind};
 #[derive(Debug)]
 pub struct Lexer<'src> {
     bytes: &'src [u8],
-    pos: usize,
+    cursor: usize,
 }
 
 impl<'src> Lexer<'src> {
@@ -19,8 +19,17 @@ impl<'src> Lexer<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
             bytes: source.as_bytes(),
-            pos: 0,
+            cursor: 0,
         }
+    }
+
+    pub fn tokenize(mut self) -> Result<Vec<Token<'src>>, LexerError> {
+        let mut tokens = Vec::with_capacity(self.bytes.len() / 4);
+        loop {
+            tokens.push(self.scan_token()?);
+        }
+
+        Ok(tokens)
     }
 
     // --- Scanner Dispatch ---
@@ -28,9 +37,9 @@ impl<'src> Lexer<'src> {
     fn scan_token(&mut self) -> Result<Token<'src>, LexerError> {
         self.skip_comments_whitespace()?;
 
-        let start = self.pos;
+        let start = self.cursor;
         let Some(b) = self.advance() else {
-            return Ok(Token::new(TokenKind::Eof, Span::new(start, self.pos)));
+            return Ok(Token::new(TokenKind::Eof, Span::new(start, 0)));
         };
 
         match b {
@@ -44,52 +53,64 @@ impl<'src> Lexer<'src> {
     // --- Scanner Helpers ---
 
     fn scan_string(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
-        let string_start = self.pos;
+        let content_start = self.cursor;
 
-        while self.peek().is_some_and(|b| b != b'"' && b != b'\n') {
-            self.advance();
+        while let Some(&b) = self.bytes.get(self.cursor) {
+            match b {
+                b'"' => {
+                    let lexeme = self.slice(content_start, self.cursor);
+                    self.cursor += 1; // consume closing quote
+
+                    return Ok(Token::new(
+                        TokenKind::StringConstant(lexeme),
+                        Span::new(start, self.cursor - start),
+                    ));
+                }
+                b'\n' => return Err(LexerError::UnterminatedString),
+                _ => self.cursor += 1,
+            }
+        }
+        Err(LexerError::UnterminatedString)
+    }
+    fn scan_integer(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
+        while self.peek().is_some_and(|b| b.is_ascii_digit()) {
+            self.cursor += 1;
         }
 
-        match self.peek() {
-            Some(b'\n') | None => return Err(LexerError::UnterminatedString),
-            Some(b'"') => self.advance(), // consume closing '"'
-            _ => unreachable!(),
-        };
+        let max = u32::from(JACK_INT_MAX);
+        let mut value: u32 = 0;
 
-        let lexeme = self.slice(string_start, self.pos - 1);
+        for &d in &self.bytes[start..self.cursor] {
+            value = value
+                .checked_mul(10)
+                .and_then(|v| v.checked_add(u32::from(d - b'0')))
+                .filter(|&v| v <= max)
+                .ok_or_else(|| {
+                    // Error path only — reconstruct for the diagnostic
+                    let raw = self
+                        .slice(start, self.cursor)
+                        .parse::<u64>()
+                        .unwrap_or(u64::MAX);
+                    LexerError::IntegerOutOfRange(raw)
+                })?;
+        }
+
         Ok(Token::new(
-            TokenKind::StringConstant(lexeme.into()),
-            Span::new(start, self.pos - start),
+            TokenKind::IntegerConstant(value),
+            Span::new(start, self.cursor - start),
         ))
     }
 
-    #[allow(clippy::cast_possible_truncation)]
-    fn scan_integer(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
-        self.advance_while(|b| b.is_ascii_digit());
-        let lexeme = self.slice(start, self.pos);
-
-        let value: u64 = lexeme.parse().map_err(LexerError::from)?;
-
-        if value > u64::from(JACK_INT_MAX) {
-            return Err(LexerError::IntegerOutOfRange(value));
-        }
-
-        let kind = TokenKind::IntegerConstant(value as u32);
-
-        Ok(Token::new(kind, Span::new(start, self.pos - start)))
-    }
-
-    #[allow(clippy::unnecessary_wraps)]
     fn scan_word(&mut self, start: usize) -> Token<'src> {
         self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
-        let lexeme = self.slice(start, self.pos);
+        let lexeme = self.slice(start, self.cursor);
 
         let kind = match Keyword::from_slice(lexeme) {
             Some(kw) => TokenKind::Keyword(kw),
             None => TokenKind::Identifier(lexeme),
         };
 
-        Token::new(kind, Span::new(start, self.pos - start))
+        Token::new(kind, Span::new(start, self.cursor - start))
     }
 
     fn scan_symbol(&mut self, b: u8, start: usize) -> Result<Token<'src>, LexerError> {
@@ -98,78 +119,89 @@ impl<'src> Lexer<'src> {
             None => return Err(LexerError::InvalidSymbol(b.to_string())),
         };
 
-        Ok(Token::new(kind, Span::new(start, self.pos - start)))
+        Ok(Token::new(kind, Span::new(start, self.cursor - start)))
     }
 
     // --- Skip Comment & Whitespace ---
 
     fn skip_comments_whitespace(&mut self) -> Result<(), LexerError> {
-        while let Some(b) = self.peek() {
-            match b {
-                b if b.is_ascii_whitespace() => {
+        loop {
+            match self.peek() {
+                Some(b) if b.is_ascii_whitespace() => {
                     self.advance_while(|b| b.is_ascii_whitespace());
                 }
-                b'/' if self.peek_next() == Some(b'*') || self.peek_next() == Some(b'/') => {
-                    self.advance();
-                    self.skip_comment()?;
-                }
+                Some(b'/') => match self.peek_next() {
+                    Some(b'/') => {
+                        self.cursor += 2;
+                        self.skip_line_comment();
+                    }
+                    Some(b'*') => {
+                        self.cursor += 2;
+                        self.skip_block_comment()?;
+                    }
+                    _ => break,
+                },
                 _ => break,
             }
         }
         Ok(())
     }
 
-    fn skip_comment(&mut self) -> Result<(), LexerError> {
-        if self.peek() == Some(b'*') {
-            self.advance(); // skip '*'
-
-            while !self.is_at_end() {
-                if self.peek() == Some(b'*') && self.peek_next() == Some(b'/') {
-                    self.advance(); // skip '*'
-                    self.advance(); // skip '/'
-                    return Ok(());
-                }
-                self.advance();
+    fn skip_line_comment(&mut self) {
+        while let Some(b) = self.peek() {
+            if b == b'\n' {
+                break;
             }
-
-            Err(LexerError::UnterminatedComment)
-        } else {
-            self.advance_while(|c| c != b'\n');
-            Ok(())
+            self.cursor += 1;
         }
     }
 
+    fn skip_block_comment(&mut self) -> Result<(), LexerError> {
+        let bytes = self.bytes;
+        while self.cursor + 1 < bytes.len() {
+            if bytes[self.cursor] == b'*' && bytes[self.cursor + 1] == b'/' {
+                self.cursor += 2;
+                return Ok(());
+            }
+            self.cursor += 1;
+        }
+        Err(LexerError::UnterminatedComment)
+    }
     // --- Char Navigation Helpers ---
 
-    fn is_at_end(&self) -> bool {
-        self.pos == self.bytes.len()
-    }
-
+    #[inline(always)]
     fn peek(&self) -> Option<u8> {
-        self.bytes.get(self.pos).copied()
+        self.bytes.get(self.cursor).copied()
     }
 
+    #[inline(always)]
     fn peek_next(&self) -> Option<u8> {
-        self.bytes.get(self.pos + 1).copied()
+        self.bytes.get(self.cursor + 1).copied()
     }
 
+    #[inline(always)]
     fn advance(&mut self) -> Option<u8> {
         let b = self.peek()?;
-        self.pos += 1;
+        self.cursor += 1;
         Some(b)
     }
 
-    fn advance_while<F>(&mut self, predicate: F)
-    where
-        F: Fn(u8) -> bool,
-    {
-        while self.peek().is_some_and(&predicate) {
-            self.advance();
+    #[inline(always)]
+    fn advance_while(&mut self, predicate: impl Fn(u8) -> bool) {
+        while let Some(&b) = self.bytes.get(self.cursor) {
+            if !predicate(b) {
+                break;
+            }
+            self.cursor += 1;
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn slice(&self, start: usize, end: usize) -> &'src str {
-        unsafe { str::from_utf8_unchecked(&self.bytes[start..end]) }
+        debug_assert!(start <= end && end <= self.bytes.len());
+        unsafe {
+            let bytes = self.bytes.get_unchecked(start..end);
+            core::str::from_utf8_unchecked(bytes)
+        }
     }
 }
