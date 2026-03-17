@@ -57,7 +57,7 @@ pub enum TokenKind<'src> {
     RBracket,  // ']'
     Dot,       // '.'
     Comma,     // ','
-    Semicolon, // ','
+    Semicolon, // ';'
 
     // Operators(Symbols)
     Plus,      // '+'
@@ -93,8 +93,8 @@ impl<'src> TokenKind<'src> {
             b'/' => Some(Self::Slash),
             b'&' => Some(Self::Ampersand),
             b'|' => Some(Self::Pipe),
-            b'>' => Some(Self::Lt),
-            b'<' => Some(Self::Gt),
+            b'>' => Some(Self::Gt),
+            b'<' => Some(Self::Lt),
             b'=' => Some(Self::Equal),
             b'~' => Some(Self::Tilde),
             _ => None,
@@ -153,66 +153,73 @@ impl Span {
     }
 }
 
-// --- Impl Display ---
+// --- Impl Displays ---
 impl<'src> std::fmt::Display for TokenKind<'src> {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
+        let s = match self {
             // -- Literals --
-            Self::IntLiteral(_)            => write!(f, "integer constant"),
-            Self::StringLiteral(_)         => write!(f, "string constant"),
+            Self::IntLiteral(_)            =>  "integer constant",
+            Self::StringLiteral(_)         =>  "string constant",
 
             // -- Identifier --
-            Self::Identifier(name) => write!(f, "'{name}'"),
+            Self::Identifier(name) =>  name,
 
             // --Keywords --
-            Self::Class        => write!(f, "'class'"),
-            Self::Constructor  => write!(f, "'constructor'"),
-            Self::Function     => write!(f, "'function'"),
-            Self::Method       => write!(f, "'method'"),
-            Self::Field        => write!(f, "'field'"),
-            Self::Static       => write!(f, "'static'"),
-            Self::Var          => write!(f, "'var'"),
-            Self::Int          => write!(f, "'int'"),
-            Self::Char         => write!(f, "'char'"),
-            Self::Boolean      => write!(f, "'boolean'"),
-            Self::Void         => write!(f, "'void'"),
-            Self::True         => write!(f, "'true'"),
-            Self::False        => write!(f, "'false'"),
-            Self::Null         => write!(f, "'null'"),
-            Self::This         => write!(f, "'this'"),
-            Self::Let          => write!(f, "'let'"),
-            Self::Do           => write!(f, "'do'"),
-            Self::If           => write!(f, "'if'"),
-            Self::Else         => write!(f, "'else'"),
-            Self::While        => write!(f, "'while'"),
-            Self::Return       => write!(f, "'return'"),
+            Self::Class        => "class",
+            Self::Constructor  => "constructor",
+            Self::Function     => "function",
+            Self::Method       => "method",
+            Self::Field        => "field",
+            Self::Static       =>  "static",
+            Self::Var          =>  "var",
+            Self::Int          =>  "int",
+            Self::Char         =>  "char",
+            Self::Boolean      =>  "boolean",
+            Self::Void         =>  "void",
+            Self::True         =>  "true",
+            Self::False        =>  "false",
+            Self::Null         =>  "null",
+            Self::This         =>  "this",
+            Self::Let          =>  "let",
+            Self::Do           =>  "do",
+            Self::If           =>  "if",
+            Self::Else         =>  "else",
+            Self::While        =>  "while",
+            Self::Return       =>  "return",
 
             // -- Punctuation(Symbols) --
-            Self::LBrace       => write!(f, "'{{'"),
-            Self::RBrace       => write!(f, "'}}'"),
-            Self::LParen       => write!(f, "'('"),
-            Self::RParen       => write!(f, "')'"),
-            Self::LBracket     => write!(f, "'['"),
-            Self::RBracket     => write!(f, "']'"),
-            Self::Dot          => write!(f, "'.'"),
-            Self::Comma        => write!(f, "','"),
-            Self::Semicolon    => write!(f, "';'"),
+            Self::LBrace       =>  "{",
+            Self::RBrace       =>  "}",
+            Self::LParen       =>  "(",
+            Self::RParen       =>  ")",
+            Self::LBracket     =>  "[",
+            Self::RBracket     =>  "]",
+            Self::Dot          =>  ".",
+            Self::Comma        =>  ",",
+            Self::Semicolon    =>  ";",
 
             // -- Operators(Symbols) --
-            Self::Plus         => write!(f, "'+'"),
-            Self::Minus        => write!(f, "'-'"),
-            Self::Star         => write!(f, "'*'"),
-            Self::Slash        => write!(f, "'/'"),
-            Self::Ampersand    => write!(f, "'&'"),
-            Self::Pipe         => write!(f, "'|'"),
-            Self::Gt           => write!(f, "'>'"),
-            Self::Lt           => write!(f, "'<'"),
-            Self::Equal        => write!(f, "'='"),
-            Self::Tilde        => write!(f, "'~'"),
+            Self::Plus         =>  "+",
+            Self::Minus        =>  "-",
+            Self::Star         =>  "*",
+            Self::Slash        =>  "/",
+            Self::Ampersand    =>  "&",
+            Self::Pipe         =>  "|",
+            Self::Gt           =>  ">",
+            Self::Lt           =>  "<",
+            Self::Equal        =>  "=",
+            Self::Tilde        =>  "~",
 
             // -- Special --
-            Self::Eof => write!(f, "'end of input'"),
-        }
+            Self::Eof =>  "end of file",
+        };
+        f.write_str(s)
+    }
+}
+
+impl<'src> std::fmt::Display for Token<'src> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} at {}..{}", self.kind, self.span.start, self.span.end)
     }
 }

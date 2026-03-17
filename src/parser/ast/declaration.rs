@@ -15,7 +15,7 @@ pub struct Class<'src> {
 pub struct ClassVarDec<'src> {
     pub names: Vec<&'src str>,
     pub kind: Kind,
-    pub type_: Type<'src>,
+    pub ty: Type<'src>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,7 +29,7 @@ pub enum Kind {
 #[derive(Debug)]
 pub struct VarDec<'src> {
     pub names: Vec<&'src str>,
-    pub type_: Type<'src>,
+    pub ty: Type<'src>,
 }
 
 // --- Subroutine Declaration ---
@@ -38,7 +38,7 @@ pub struct VarDec<'src> {
 pub struct SubroutineDec<'src> {
     pub name: &'src str,
     pub kind: SubroutineKind,
-    pub return_type: ReturnType<'src>,
+    pub return_ty: ReturnType<'src>,
     pub parameters: Vec<Parameter<'src>>,
     pub body: SubroutineBody<'src>,
 }
@@ -91,7 +91,7 @@ pub enum ReturnType<'src> {
 #[derive(Debug)]
 pub struct Parameter<'src> {
     pub name: &'src str,
-    pub type_: Type<'src>,
+    pub ty: Type<'src>,
 }
 
 // impl fmt::Display for Class {
