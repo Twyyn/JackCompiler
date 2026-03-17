@@ -1,12 +1,12 @@
 // --- Token ---
 #[derive(Debug)]
-pub struct Token {
-    pub kind: TokenKind,
+pub struct Token<'src> {
+    pub kind: TokenKind<'src>,
     pub span: Span,
 }
 
-impl Token {
-    pub fn new(kind: TokenKind, span: Span) -> Self {
+impl<'src> Token<'src> {
+    pub fn new(kind: TokenKind<'src>, span: Span) -> Self {
         Self { kind, span }
     }
 
@@ -17,13 +17,13 @@ impl Token {
 
 // --- Token Kind ---
 #[derive(Debug, PartialEq, Eq)]
-pub enum TokenKind {
+pub enum TokenKind<'src> {
     // Literals
-    IntLiteral(u32),       // IntegerConstant
-    StringLiteral(String), // StringConstant
+    IntLiteral(u32),          // IntegerConstant
+    StringLiteral(&'src str), // StringConstant
 
     // Identifier
-    Identifier(String),
+    Identifier(&'src str),
 
     // Keywords
     Class,
@@ -75,7 +75,7 @@ pub enum TokenKind {
     Eof,
 }
 
-impl TokenKind {
+impl<'src> TokenKind<'src> {
     pub fn from_symbol(b: u8) -> Option<Self> {
         match b {
             b'{' => Some(Self::LBrace),
@@ -102,7 +102,7 @@ impl TokenKind {
     }
 
     #[rustfmt::skip]
-    pub fn from_keyword(s: &str) -> Option<TokenKind> {
+    pub fn from_keyword(s: &'src str) -> Option<TokenKind> {
         let first_char = s.as_bytes()[0];
         if !matches!(first_char,
             b'c' | b'f' | b'm' | b's' | b'v' | b'e' | b'i' | b'b' |
@@ -154,7 +154,7 @@ impl Span {
 }
 
 // --- Impl Display ---
-impl std::fmt::Display for TokenKind {
+impl<'src> std::fmt::Display for TokenKind<'src> {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

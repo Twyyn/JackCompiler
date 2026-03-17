@@ -13,6 +13,7 @@ pub enum LexerError {
     InvalidSymbol(String),
     UnterminatedString,
     UnterminatedComment,
+    CursorOutofBounds,
 }
 
 impl From<ParseIntError> for LexerError {
@@ -32,6 +33,7 @@ impl fmt::Display for LexerError {
             Self::InvalidSymbol(src) => write!(f, "invalid symbol {src}"),
             Self::UnterminatedString => write!(f, "unterminated string literal"),
             Self::UnterminatedComment => write!(f, "unterminated comment"),
+            Self::CursorOutofBounds => write!(f, "byte cursor out of bounds"),
         }
     }
 }

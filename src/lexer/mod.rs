@@ -7,21 +7,23 @@ pub use token::{Span, Token, TokenKind};
 use crate::JACK_INT_MAX;
 
 #[derive(Debug)]
-pub struct Lexer {
-    source: Vec<u8>,
+pub struct Lexer<'src> {
+    source_bytes: &'src [u8],
     cursor: usize,
 }
 
-impl Lexer {
+impl<'src> Lexer<'src> {
     #[must_use]
-    pub fn new(source: &str) -> Self {
-        let source = source.bytes().collect();
-        Self { source, cursor: 0 }
+    pub fn new(source: &'src str) -> Self {
+        Self {
+            source_bytes: source.as_bytes(),
+            cursor: 0,
+        }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token<'src>>, LexerError> {
         // Estimate ~1 token per 5 bytes of source (typical for C code).
-        let mut tokens = Vec::with_capacity(self.source.len() / 4);
+        let mut tokens = Vec::with_capacity(self.source_bytes.len() / 4);
         loop {
             let token = self.next_token()?;
             let is_eof = token.is_eof();
@@ -30,7 +32,7 @@ impl Lexer {
                 break;
             }
         }
-        Ok(tokens)
+        Ok(&'src tokens)
     }
 
     // --- Scanner Dispatch ---
@@ -54,43 +56,43 @@ impl Lexer {
     // --- Scanner Helpers ---
 
     fn scan_string(&mut self, start: usize) -> Result<Token, LexerError> {
-        let content_start = self.cursor;
+        self.bump_cursor(1)?; // consume opening quote
 
-        while let Some(&b) = self.source.get(self.cursor) {
-            match b {
-                b'"' => {
-                    let lexeme = std::str::from_utf8(&self.source[start..self.cursor])
-                        .unwrap()
-                        .to_string();
-                    self.cursor += 1; // consume closing quote
+        loop {
+            match self.source_bytes.get(self.cursor) {
+                Some(b'"') => {
+                    self.bump_cursor(1)?; // consume closing quote
+                    let lexeme = unsafe {
+                        std::str::from_utf8_unchecked(&self.source_bytes[start..self.cursor])
+                    };
 
                     return Ok(Token::new(
                         TokenKind::StringLiteral(lexeme),
-                        Span::new(content_start as u32, self.cursor as u32),
+                        Span::new(start as u32, self.cursor as u32),
                     ));
                 }
-                b'\n' => return Err(LexerError::UnterminatedString),
-                _ => self.cursor += 1,
+                Some(b'\n') | None => return Err(LexerError::UnterminatedString),
+                Some(_) => self.bump_cursor(1)?,
             }
         }
-        Err(LexerError::UnterminatedString)
     }
+
     fn scan_integer(&mut self, start: usize) -> Result<Token, LexerError> {
         while self.peek().is_some_and(|b| b.is_ascii_digit()) {
-            self.cursor += 1;
+            self.bump_cursor(1)?;
         }
 
         let max = u32::from(JACK_INT_MAX);
         let mut value: u32 = 0;
 
-        for &d in &self.source[start..self.cursor] {
+        for &d in &self.source_bytes[start..self.cursor] {
             value = value
                 .checked_mul(10)
                 .and_then(|v| v.checked_add(u32::from(d - b'0')))
                 .filter(|&v| v <= max)
                 .ok_or_else(|| {
                     // Error path only — reconstruct for the diagnostic
-                    let raw = std::str::from_utf8(&self.source[start..self.cursor])
+                    let raw = std::str::from_utf8(&self.source_bytes[start..self.cursor])
                         .iter()
                         .collect()
                         .parse::<u64>()
@@ -107,11 +109,11 @@ impl Lexer {
 
     fn scan_word(&mut self, start: usize) -> Result<Token, LexerError> {
         self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
-        let lexeme = std::str::from_utf8(&self.source[start..self.cursor]).unwrap_or("");
+        let lexeme = std::str::from_utf8(&self.source_bytes[start..self.cursor]).unwrap_or("");
 
         let kind = match TokenKind::from_keyword(lexeme) {
             Some(keyword) => keyword,
-            None => TokenKind::Identifier(String::from(lexeme)),
+            None => TokenKind::Identifier(lexeme),
         };
 
         Ok(Token::new(
@@ -142,11 +144,11 @@ impl Lexer {
                 }
                 Some(b'/') => match self.peek_next() {
                     Some(b'/') => {
-                        self.cursor += 2;
+                        self.bump_cursor(2)?;
                         self.skip_line_comment();
                     }
                     Some(b'*') => {
-                        self.cursor += 2;
+                        self.bump_cursor(2)?;
                         self.skip_block_comment()?;
                     }
                     _ => break,
@@ -157,46 +159,57 @@ impl Lexer {
         Ok(())
     }
 
-    fn skip_line_comment(&mut self) {
+    fn skip_line_comment(&mut self) -> Result<(), LexerError> {
         while self.has_more_bytes() {
             if matches!(self.peek(), Some(b'\n')) {
                 break;
             }
-            self.cursor += 1;
+            self.bump_cursor(1)?;
         }
+
+        Ok(())
     }
 
     fn skip_block_comment(&mut self) -> Result<(), LexerError> {
         while self.has_more_bytes() {
             if matches!((self.peek(), self.peek_next()), (Some(b'*'), Some(b'/'))) {
-                self.cursor += 1;
+                self.bump_cursor(1)?;
                 return Ok(());
             }
-            self.cursor += 1;
+            self.bump_cursor(1)?;
         }
         Err(LexerError::UnterminatedComment)
     }
 
-    #[inline]
-    fn has_more_bytes(&self) -> bool {
-        self.cursor + 1 < self.source.len()
+    fn bump_cursor(&mut self, length: usize) -> Result<(), LexerError> {
+        if self.cursor + length > self.source_bytes.len() {
+            return Err(LexerError::CursorOutofBounds);
+        }
+        self.cursor += length;
+        Ok(())
     }
 
+    #[inline]
+    fn has_more_bytes(&self) -> bool {
+        self.cursor < self.source_bytes.len()
+    }
+
+    #[inline]
     fn peek(&self) -> Option<u8> {
-        Some(self.source[self.cursor])
+        self.source_bytes.get(self.cursor).copied()
     }
 
     #[inline]
     fn peek_next(&self) -> Option<u8> {
         if self.has_more_bytes() {
-            return Some(self.source[self.cursor + 1]);
+            return Some(self.source_bytes[self.cursor + 1]);
         }
         None
     }
 
     #[inline(always)]
     fn advance_while(&mut self, predicate: impl Fn(u8) -> bool) {
-        while let Some(&b) = self.source.get(self.cursor) {
+        while let Some(&b) = self.source_bytes.get(self.cursor) {
             if !predicate(b) {
                 break;
             }
