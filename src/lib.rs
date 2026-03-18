@@ -4,13 +4,14 @@ pub mod lexer;
 pub mod parser;
 
 use std::fs;
+#[allow(unused_imports)]
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use crate::error::CompilerError;
 use crate::lexer::Lexer;
-use crate::parser::Parser;
-use crate::parser::ast::Class;
+// use crate::parser::Parser;
+// use crate::parser::ast::Class;
 
 pub const JACK_INT_MAX: u32 = 32767;
 
@@ -55,7 +56,7 @@ impl JackCompiler {
     ///
     /// Returns a `CompilerError` if the source path is invalid, no Jack files are found,
     /// or if there is an I/O error reading the source files.
-    pub fn from_path(path: &str) -> Result<Self, CompilerError> {
+    pub fn from_path(path: &str) -> Result<Self, CompilerError<'_>> {
         let source = Path::new(path);
 
         let jack_files: Vec<_> = if source.is_dir() {
@@ -110,10 +111,10 @@ impl JackCompiler {
     pub fn compile(self) -> Result<(), CompilerError<'static>> {
         for source_file in &self.source_files {
             let file = fs::File::create(&source_file.output_path)?;
-            let mut writer = BufWriter::new(file);
+            let mut _writer = BufWriter::new(file);
 
             let tokens = Lexer::new(&source_file.contents).tokenize();
-            println!("{tokens:?}")
+            println!("{tokens:?}");
         }
 
         Ok(())

@@ -12,13 +12,13 @@ pub enum CompilerError<'src> {
     Parse(ParseError<'src>),
 }
 
-impl<'src> From<std::io::Error> for CompilerError<'src> {
+impl From<std::io::Error> for CompilerError<'_> {
     fn from(err: std::io::Error) -> Self {
         Self::Io(err)
     }
 }
 
-impl<'src> From<LexerError> for CompilerError<'src> {
+impl From<LexerError> for CompilerError<'_>  {
     fn from(err: LexerError) -> Self {
         Self::Lexer(err)
     }

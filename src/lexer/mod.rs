@@ -23,12 +23,14 @@ impl<'src> Lexer<'src> {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn tokenize(self) -> Result<Vec<Token<'src>>, LexerError> {
         self.collect()
     }
 }
 // ── Scanner Dispatch ─────────────────────────────────────────────
 
+#[allow(clippy::cast_possible_truncation)]
 impl<'src> Lexer<'src> {
     fn next_token(&mut self) -> Result<Token<'src>, LexerError> {
         self.skip_comments_whitespace()?;
@@ -41,7 +43,7 @@ impl<'src> Lexer<'src> {
         match b {
             b'"' => self.scan_string(start),
             b'0'..=b'9' => self.scan_integer(start),
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.scan_word(start),
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' => Ok(self.scan_word(start)),
             _ => self.scan_symbol(b, start),
         }
     }
@@ -49,13 +51,14 @@ impl<'src> Lexer<'src> {
 
 // ── Scanners ─────────────────────────────────────────────
 
+#[allow(clippy::cast_possible_truncation)]
 impl<'src> Lexer<'src> {
     fn scan_integer(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
         while self.peek().is_some_and(|b| b.is_ascii_digit()) {
             self.bump_cursor(1)?;
         }
 
-        let max = u32::from(JACK_INT_MAX);
+        let max = JACK_INT_MAX;
         let mut value: u32 = 0;
 
         for &d in &self.source_bytes[start..self.cursor] {
@@ -99,9 +102,8 @@ impl<'src> Lexer<'src> {
     }
 
     fn scan_symbol(&mut self, b: u8, start: usize) -> Result<Token<'src>, LexerError> {
-        let kind = match TokenKind::from_symbol(b) {
-            Some(symbol) => symbol,
-            None => return Err(LexerError::InvalidSymbol(b.to_string())),
+        let Some(kind) = TokenKind::from_symbol(b) else {
+            return Err(LexerError::InvalidSymbol(b.to_string()));
         };
 
         self.bump_cursor(1)?;
@@ -111,7 +113,7 @@ impl<'src> Lexer<'src> {
         ))
     }
 
-    fn scan_word(&mut self, start: usize) -> Result<Token<'src>, LexerError> {
+    fn scan_word(&mut self, start: usize) -> Token<'src> {
         self.advance_while(|b| b.is_ascii_alphanumeric() || b == b'_');
 
         let lexeme = self.lexeme_from_slice(start, self.cursor);
@@ -121,16 +123,13 @@ impl<'src> Lexer<'src> {
             None => TokenKind::Identifier(lexeme),
         };
 
-        Ok(Token::new(
-            kind,
-            Span::new(start as u32, self.cursor as u32),
-        ))
+        Token::new(kind, Span::new(start as u32, self.cursor as u32))
     }
 }
 
 // ── Whitespace & Comments ─────────────────────────────────────────────
 
-impl<'src> Lexer<'src> {
+impl Lexer<'_> {
     fn skip_comments_whitespace(&mut self) -> Result<(), LexerError> {
         loop {
             match self.peek() {
@@ -180,7 +179,7 @@ impl<'src> Lexer<'src> {
 
 // ── Cursor Primitives ─────────────────────────────────────────────
 
-impl<'src> Lexer<'src> {
+impl Lexer<'_> {
     fn bump_cursor(&mut self, length: usize) -> Result<(), LexerError> {
         if self.cursor + length > self.source_bytes.len() {
             return Err(LexerError::CursorOutofBounds);
@@ -204,7 +203,7 @@ impl<'src> Lexer<'src> {
         self.source_bytes.get(self.cursor + 1).copied()
     }
 
-    #[inline(always)]
+    #[inline]
     fn advance_while(&mut self, predicate: impl Fn(u8) -> bool) {
         while self
             .source_bytes

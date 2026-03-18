@@ -10,13 +10,13 @@ pub enum ParseError<'src> {
     LexerError(LexerError),
 }
 
-impl<'src> From<LexerError> for ParseError<'src> {
+impl From<LexerError> for ParseError<'_> {
     fn from(e: LexerError) -> Self {
         ParseError::LexerError(e)
     }
 }
 
-impl<'src> fmt::Display for ParseError<'src> {
+impl fmt::Display for ParseError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidToken(token) => write!(f, "invalid token {token}"),

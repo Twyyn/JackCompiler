@@ -17,6 +17,7 @@ pub struct Parser<'src> {
 }
 
 impl<'src> Parser<'src> {
+    #[must_use]
     pub fn new(lexer: Lexer<'src>) -> Self {
         Self {
             lexer: lexer.peekable(),
@@ -71,7 +72,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn expect(&mut self, kind: &TokenKind) -> Result<Token, ParseError<'src>> {
+    fn expect(&mut self, kind: &TokenKind) -> Result<Token<'src>, ParseError<'src>> {
         let token = self.advance()?;
         match token {
             token if token.kind == *kind => Ok(token),
@@ -157,6 +158,7 @@ impl<'src> Parser<'src> {
         })
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn parse_term(&mut self) -> Result<Term<'src>, ParseError<'src>> {
         let token = self.advance()?;
         match token.kind {
@@ -199,9 +201,9 @@ impl<'src> Parser<'src> {
     ) -> Result<SubroutineCall<'src>, ParseError<'src>> {
         let (receiver, name) = if self.peek_is(&TokenKind::Dot) {
             self.advance()?;
-            (Some(first.into()), self.expect_identifier()?)
+            (Some(first), self.expect_identifier()?)
         } else {
-            (None, first.into())
+            (None, first)
         };
 
         self.expect(&TokenKind::LParen)?;
@@ -285,7 +287,7 @@ impl<'src> Parser<'src> {
 
             TokenKind::Do => {
                 let name = self.expect_identifier()?;
-                let subroutine_call = self.parse_subroutine_call(&name)?;
+                let subroutine_call = self.parse_subroutine_call(name)?;
                 self.expect(&TokenKind::Semicolon)?;
 
                 Ok(Statement::Do(DoStmt { subroutine_call }))

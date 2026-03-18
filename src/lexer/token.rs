@@ -8,10 +8,12 @@ pub struct Token<'src> {
 }
 
 impl<'src> Token<'src> {
+    #[must_use]
     pub fn new(kind: TokenKind<'src>, span: Span) -> Self {
         Self { kind, span }
     }
 
+    #[must_use]
     pub fn is_eof(&self) -> bool {
         matches!(self.kind, TokenKind::Eof)
     }
@@ -78,6 +80,7 @@ pub enum TokenKind<'src> {
 }
 
 impl<'src> TokenKind<'src> {
+    #[must_use]
     pub fn from_symbol(b: u8) -> Option<Self> {
         match b {
             b'{' => Some(Self::LBrace),
@@ -104,7 +107,8 @@ impl<'src> TokenKind<'src> {
     }
 
     #[rustfmt::skip]
-    pub fn from_keyword(s: &'src str) -> Option<TokenKind> {
+    #[must_use]
+    pub fn from_keyword(s: &'src str) -> Option<TokenKind<'src>> {
         let first_char = s.as_bytes()[0];
         if !matches!(first_char,
             b'c' | b'f' | b'm' | b's' | b'v' | b'e' | b'i' | b'b' |
@@ -140,7 +144,8 @@ impl<'src> TokenKind<'src> {
     }
 }
 
-impl<'src> TokenKind<'src> {
+impl TokenKind<'_> {
+    #[must_use]
     pub fn as_binary_op(&self) -> Option<BinaryOp> {
         match self {
             Self::Plus => Some(BinaryOp::Add),
@@ -174,7 +179,7 @@ impl Span {
 }
 
 // --- Impl Displays ---
-impl<'src> std::fmt::Display for TokenKind<'src> {
+impl std::fmt::Display for TokenKind<'_> {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -238,7 +243,7 @@ impl<'src> std::fmt::Display for TokenKind<'src> {
     }
 }
 
-impl<'src> std::fmt::Display for Token<'src> {
+impl std::fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} at {}..{}", self.kind, self.span.start, self.span.end)
     }
