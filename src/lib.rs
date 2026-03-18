@@ -1,13 +1,13 @@
+pub mod codegen;
 pub mod error;
 pub mod lexer;
 pub mod parser;
-pub mod codegen;
 
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use crate::error::CompilerResult;
+use crate::error::CompilerError;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::parser::ast::Class;
@@ -55,7 +55,7 @@ impl JackCompiler {
     ///
     /// Returns a `CompilerError` if the source path is invalid, no Jack files are found,
     /// or if there is an I/O error reading the source files.
-    pub fn from_path(path: &str) -> CompilerResult<Self> {
+    pub fn from_path(path: &str) -> Result<Self, CompilerError> {
         let source = Path::new(path);
 
         let jack_files: Vec<_> = if source.is_dir() {
@@ -78,7 +78,7 @@ impl JackCompiler {
             return Err(error::CompilerError::InvalidPath);
         };
 
-        let source_files = jack_files
+        let source_files: Vec<SourceFile> = jack_files
             .into_iter()
             .map(|path| {
                 let name = path
@@ -92,7 +92,7 @@ impl JackCompiler {
 
                 Ok(SourceFile::new(name, contents, output_path))
             })
-            .collect::<CompilerResult<Vec<_>>>()?;
+            .collect::<Result<_, CompilerError>>()?;
 
         Ok(Self::new(source_files))
     }
@@ -107,25 +107,14 @@ impl JackCompiler {
     /// Returns a `CompilerError` if tokenization fails for any source file (e.g.,
     /// unrecognized character, malformed token), or if the parser encounters invalid
     /// or unexpected syntax while building the AST.
-    pub fn compile(self) -> CompilerResult<()> {
-        for source_file in self.source_files {
-            let file = fs::File::create(source_file.output_path)?;
-            let mut _writer = BufWriter::new(file);
+    pub fn compile(self) -> Result<(), CompilerError<'static>> {
+        for source_file in &self.source_files {
+            let file = fs::File::create(&source_file.output_path)?;
+            let mut writer = BufWriter::new(file);
 
-            let lexer = Lexer::new(&source_file.contents);
-
-            //let mut parser = Parser::new(&tokens);
-            //let classes: Vec<Class> = parser.parse()?;
-
-            
+            let tokens = Lexer::new(&source_file.contents).tokenize();
+            println!("{tokens:?}")
         }
-
-        // let mut classes = Vec::new();
-        // for file in &self.source_files {
-        //     let tokens = Lexer::new(&file.contents).tokenize()?;
-        //     let mut parsed = Parser::new(tokens).parse()?;
-        //     classes.append(&mut parsed);
-        // }
 
         Ok(())
     }

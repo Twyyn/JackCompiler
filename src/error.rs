@@ -25,12 +25,12 @@ impl<'src> From<LexerError> for CompilerError<'src> {
 }
 
 impl<'src> From<ParseError<'src>> for CompilerError<'src> {
-    fn from(err: ParseError) -> Self<'src> {
+    fn from(err: ParseError<'src>) -> Self {
         Self::Parse(err)
     }
 }
 
-impl<'src> fmt::Display for CompilerError<'src> {
+impl fmt::Display for CompilerError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidPath => write!(f, "path is not a valid .jack file or directory"),
@@ -42,4 +42,4 @@ impl<'src> fmt::Display for CompilerError<'src> {
     }
 }
 
-impl std::error::Error for CompilerError {}
+impl std::error::Error for CompilerError<'_> {}

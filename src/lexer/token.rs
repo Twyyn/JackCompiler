@@ -1,3 +1,5 @@
+use crate::parser::ast::BinaryOp;
+
 // --- Token ---
 #[derive(Debug)]
 pub struct Token<'src> {
@@ -137,6 +139,24 @@ impl<'src> TokenKind<'src> {
         }
     }
 }
+
+impl<'src> TokenKind<'src> {
+    pub fn as_binary_op(&self) -> Option<BinaryOp> {
+        match self {
+            Self::Plus => Some(BinaryOp::Add),
+            Self::Minus => Some(BinaryOp::Sub),
+            Self::Star => Some(BinaryOp::Mul),
+            Self::Slash => Some(BinaryOp::Div),
+            Self::Ampersand => Some(BinaryOp::And),
+            Self::Pipe => Some(BinaryOp::Or),
+            Self::Lt => Some(BinaryOp::Lt),
+            Self::Gt => Some(BinaryOp::Gt),
+            Self::Equal => Some(BinaryOp::Eq),
+            _ => None,
+        }
+    }
+}
+
 
 // --- Span ---
 

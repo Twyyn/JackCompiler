@@ -1,18 +1,23 @@
 use jack_compiler::JackCompiler;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let source = std::env::args()
-        .nth(1)
-        .ok_or("Usage: jack_compiler <file.jack | directory>")?;
+use std::process;
 
-    let compiler = JackCompiler::from_path(&source)?;
+fn main() {
+    let source = std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("Usage: jack_compiler <file.jack | directory>");
+        process::exit(1);
+    });
 
-    match compiler.compile() {
-        Ok(()) => {}
+    let compiler = match JackCompiler::from_path(&source) {
+        Ok(c) => c,
         Err(e) => {
             eprintln!("{e}");
+            process::exit(1);
         }
-    }
+    };
 
-    Ok(())
+    if let Err(e) = compiler.compile() {
+        eprintln!("{e}");
+        process::exit(1);
+    }
 }

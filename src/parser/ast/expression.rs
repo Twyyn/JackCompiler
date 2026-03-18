@@ -1,4 +1,5 @@
 use super::SubroutineCall;
+use crate::parser::TokenKind;
 
 // --- Expression ---
 
@@ -66,7 +67,7 @@ pub enum BinaryOp {
     Or,
     Gt,
     Lt,
-    Equal,
+    Eq,
 }
 
 impl BinaryOp {
@@ -81,7 +82,7 @@ impl BinaryOp {
             Self::Or => '|',
             Self::Gt => '>',
             Self::Lt => '<',
-            Self::Equal => '=',
+            Self::Eq => '=',
         }
     }
 }
@@ -102,6 +103,8 @@ impl UnaryOp {
         }
     }
 }
+
+
 
 // --- Display Impls ---
 
