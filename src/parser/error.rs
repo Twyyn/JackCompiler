@@ -7,6 +7,7 @@ pub enum ParseError<'src> {
     InvalidToken(Token<'src>),
     UnexpectedToken(Token<'src>),
     UnexpectedEof,
+    IntegerOverflow(Token<'src>),
     LexerError(LexerError),
 }
 
@@ -21,7 +22,8 @@ impl fmt::Display for ParseError<'_> {
         match self {
             Self::InvalidToken(token) => write!(f, "invalid token {token}"),
             Self::UnexpectedToken(token) => write!(f, "unexpected token {token}"),
-            Self::UnexpectedEof => write!(f, "Unexpected EOF"),
+            Self::UnexpectedEof => write!(f, "unexpected EOF"),
+            Self::IntegerOverflow(e) => write!(f, "integer overflow {e}"),
             Self::LexerError(e) => write!(f, "{e}"),
         }
     }

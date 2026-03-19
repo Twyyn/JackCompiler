@@ -1,7 +1,21 @@
-use crate::parser::ast::BinaryOp;
+// --- Span ---
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Span {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl Span {
+    #[must_use]
+    pub const fn new(start: u32, end: u32) -> Self {
+        Self { start, end }
+    }
+}
 
 // --- Token ---
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 pub struct Token<'src> {
     pub kind: TokenKind<'src>,
     pub span: Span,
@@ -9,22 +23,23 @@ pub struct Token<'src> {
 
 impl<'src> Token<'src> {
     #[must_use]
-    pub fn new(kind: TokenKind<'src>, span: Span) -> Self {
+    pub const fn new(kind: TokenKind<'src>, span: Span) -> Self {
         Self { kind, span }
     }
 
     #[must_use]
-    pub fn is_eof(&self) -> bool {
+    pub const fn is_eof(&self) -> bool {
         matches!(self.kind, TokenKind::Eof)
     }
 }
 
-// --- Token Kind ---
-#[derive(Debug, PartialEq, Eq)]
+// --- TokenKind ---
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind<'src> {
     // Literals
-    IntLiteral(u32),          // IntegerConstant
-    StringLiteral(&'src str), // StringConstant
+    IntLiteral(u32),
+    StringLiteral(&'src str),
 
     // Identifier
     Identifier(&'src str),
@@ -52,36 +67,101 @@ pub enum TokenKind<'src> {
     While,
     Return,
 
-    // Punctuation(Symbols)
-    LBrace,    // '{'
-    RBrace,    // '}'
-    LParen,    // '('
-    RParen,    // ')'
-    LBracket,  // '['
-    RBracket,  // ']'
-    Dot,       // '.'
-    Comma,     // ','
-    Semicolon, // ';'
+    // Punctuation
+    LBrace,
+    RBrace,
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    Dot,
+    Comma,
+    Semicolon,
 
-    // Operators(Symbols)
-    Plus,      // '+'
-    Minus,     // '-'
-    Star,      // '*'
-    Slash,     // '/'
-    Ampersand, // '&'
-    Pipe,      // '|'
-    Gt,        // '>'
-    Lt,        // '<'
-    Equal,     // '='
-    Tilde,     // '~'
+    // Operators
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Ampersand,
+    Pipe,
+    Gt,
+    Lt,
+    Equal,
+    Tilde,
 
-    // Special
     Eof,
 }
 
+// --- Classification ---
+
+impl TokenKind<'_> {
+    #[must_use]
+    pub const fn is_identifier(&self) -> bool {
+        matches!(self, Self::Identifier(_))
+    }
+
+    #[must_use]
+    pub const fn is_integer(&self) -> bool {
+        matches!(self, Self::IntLiteral(_))
+    }
+
+    #[must_use]
+    pub const fn is_string(&self) -> bool {
+        matches!(self, Self::StringLiteral(_))
+    }
+
+    #[must_use]
+    pub const fn is_keyword(&self) -> bool {
+        matches!(
+            self,
+            Self::Class
+                | Self::Constructor
+                | Self::Function
+                | Self::Method
+                | Self::Field
+                | Self::Static
+                | Self::Var
+                | Self::Int
+                | Self::Char
+                | Self::Boolean
+                | Self::Void
+                | Self::True
+                | Self::False
+                | Self::Null
+                | Self::This
+                | Self::Let
+                | Self::Do
+                | Self::If
+                | Self::Else
+                | Self::While
+                | Self::Return
+        )
+    }
+
+    #[must_use]
+    pub const fn is_op(&self) -> bool {
+        matches!(
+            self,
+            Self::Plus
+                | Self::Minus
+                | Self::Star
+                | Self::Slash
+                | Self::Ampersand
+                | Self::Pipe
+                | Self::Gt
+                | Self::Lt
+                | Self::Equal
+                | Self::Tilde
+        )
+    }
+}
+
+// --- Conversion ---
+
 impl<'src> TokenKind<'src> {
     #[must_use]
-    pub fn from_symbol(b: u8) -> Option<Self> {
+    pub const fn from_symbol(b: u8) -> Option<Self> {
         match b {
             b'{' => Some(Self::LBrace),
             b'}' => Some(Self::RBrace),
@@ -108,138 +188,102 @@ impl<'src> TokenKind<'src> {
 
     #[rustfmt::skip]
     #[must_use]
-    pub fn from_keyword(s: &'src str) -> Option<TokenKind<'src>> {
-        let first_char = s.as_bytes()[0];
-        if !matches!(first_char,
-            b'c' | b'f' | b'm' | b's' | b'v' | b'e' | b'i' | b'b' |
-            b't' | b'n' | b'r' | b'l' | b'd' | b'w'
+    pub fn from_keyword(s: &'src str) -> Option<Self> {
+        let &first = s.as_bytes().first()?;
+        if !matches!(first,
+            b'b' | b'c' | b'd' | b'e' | b'f' | b'i' | b'l' |
+            b'm' | b'n' | b'r' | b's' | b't' | b'v' | b'w'
         ) {
             return None;
         }
 
         match s {
+            "boolean"     => Some(Self::Boolean),
+            "char"        => Some(Self::Char),
             "class"       => Some(Self::Class),
             "constructor" => Some(Self::Constructor),
-            "function"    => Some(Self::Function),
-            "method"      => Some(Self::Method),
-            "field"       => Some(Self::Field),
-            "static"      => Some(Self::Static),
-            "var"         => Some(Self::Var),
-            "int"         => Some(Self::Int),
-            "char"        => Some(Self::Char),
-            "boolean"     => Some(Self::Boolean),
-            "void"        => Some(Self::Void),
-            "true"        => Some(Self::True),
-            "false"       => Some(Self::False),
-            "null"        => Some(Self::Null),
-            "this"        => Some(Self::This),
-            "let"         => Some(Self::Let),
             "do"          => Some(Self::Do),
-            "if"          => Some(Self::If),
             "else"        => Some(Self::Else),
-            "while"       => Some(Self::While),
+            "false"       => Some(Self::False),
+            "field"       => Some(Self::Field),
+            "function"    => Some(Self::Function),
+            "if"          => Some(Self::If),
+            "int"         => Some(Self::Int),
+            "let"         => Some(Self::Let),
+            "method"      => Some(Self::Method),
+            "null"        => Some(Self::Null),
             "return"      => Some(Self::Return),
+            "static"      => Some(Self::Static),
+            "this"        => Some(Self::This),
+            "true"        => Some(Self::True),
+            "var"         => Some(Self::Var),
+            "void"        => Some(Self::Void),
+            "while"       => Some(Self::While),
             _             => None,
         }
     }
 }
 
-impl TokenKind<'_> {
-    #[must_use]
-    pub fn as_binary_op(&self) -> Option<BinaryOp> {
-        match self {
-            Self::Plus => Some(BinaryOp::Add),
-            Self::Minus => Some(BinaryOp::Sub),
-            Self::Star => Some(BinaryOp::Mul),
-            Self::Slash => Some(BinaryOp::Div),
-            Self::Ampersand => Some(BinaryOp::And),
-            Self::Pipe => Some(BinaryOp::Or),
-            Self::Lt => Some(BinaryOp::Lt),
-            Self::Gt => Some(BinaryOp::Gt),
-            Self::Equal => Some(BinaryOp::Eq),
-            _ => None,
-        }
-    }
-}
+// --- Display ---
 
-
-// --- Span ---
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Span {
-    pub start: u32,
-    pub end: u32,
-}
-
-impl Span {
-    #[must_use]
-    pub fn new(start: u32, end: u32) -> Self {
-        Self { start, end }
-    }
-}
-
-// --- Impl Displays ---
 impl std::fmt::Display for TokenKind<'_> {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            // -- Literals --
-            Self::IntLiteral(_)            =>  "integer constant",
-            Self::StringLiteral(_)         =>  "string constant",
+        match self {
+            Self::IntLiteral(n)    => return write!(f, "{n}"),
+            Self::StringLiteral(s) => return write!(f, "\"{s}\""),
+            Self::Identifier(name) => return f.write_str(name),
+            _ => {}
+        }
 
-            // -- Identifier --
-            Self::Identifier(name) =>  name,
+        f.write_str(match self {
+            Self::Class       => "class",
+            Self::Constructor => "constructor",
+            Self::Function    => "function",
+            Self::Method      => "method",
+            Self::Field       => "field",
+            Self::Static      => "static",
+            Self::Var         => "var",
+            Self::Int         => "int",
+            Self::Char        => "char",
+            Self::Boolean     => "boolean",
+            Self::Void        => "void",
+            Self::True        => "true",
+            Self::False       => "false",
+            Self::Null        => "null",
+            Self::This        => "this",
+            Self::Let         => "let",
+            Self::Do          => "do",
+            Self::If          => "if",
+            Self::Else        => "else",
+            Self::While       => "while",
+            Self::Return      => "return",
 
-            // --Keywords --
-            Self::Class        => "class",
-            Self::Constructor  => "constructor",
-            Self::Function     => "function",
-            Self::Method       => "method",
-            Self::Field        => "field",
-            Self::Static       =>  "static",
-            Self::Var          =>  "var",
-            Self::Int          =>  "int",
-            Self::Char         =>  "char",
-            Self::Boolean      =>  "boolean",
-            Self::Void         =>  "void",
-            Self::True         =>  "true",
-            Self::False        =>  "false",
-            Self::Null         =>  "null",
-            Self::This         =>  "this",
-            Self::Let          =>  "let",
-            Self::Do           =>  "do",
-            Self::If           =>  "if",
-            Self::Else         =>  "else",
-            Self::While        =>  "while",
-            Self::Return       =>  "return",
+            Self::LBrace      => "{",
+            Self::RBrace      => "}",
+            Self::LParen      => "(",
+            Self::RParen      => ")",
+            Self::LBracket    => "[",
+            Self::RBracket    => "]",
+            Self::Dot         => ".",
+            Self::Comma       => ",",
+            Self::Semicolon   => ";",
 
-            // -- Punctuation(Symbols) --
-            Self::LBrace       =>  "{",
-            Self::RBrace       =>  "}",
-            Self::LParen       =>  "(",
-            Self::RParen       =>  ")",
-            Self::LBracket     =>  "[",
-            Self::RBracket     =>  "]",
-            Self::Dot          =>  ".",
-            Self::Comma        =>  ",",
-            Self::Semicolon    =>  ";",
+            Self::Plus        => "+",
+            Self::Minus       => "-",
+            Self::Star        => "*",
+            Self::Slash       => "/",
+            Self::Ampersand   => "&",
+            Self::Pipe        => "|",
+            Self::Gt          => ">",
+            Self::Lt          => "<",
+            Self::Equal       => "=",
+            Self::Tilde       => "~",
 
-            // -- Operators(Symbols) --
-            Self::Plus         =>  "+",
-            Self::Minus        =>  "-",
-            Self::Star         =>  "*",
-            Self::Slash        =>  "/",
-            Self::Ampersand    =>  "&",
-            Self::Pipe         =>  "|",
-            Self::Gt           =>  ">",
-            Self::Lt           =>  "<",
-            Self::Equal        =>  "=",
-            Self::Tilde        =>  "~",
+            Self::Eof         => "end of file",
 
-            // -- Special --
-            Self::Eof =>  "end of file",
-        };
-        f.write_str(s)
+            _ => unreachable!(),
+        })
     }
 }
 

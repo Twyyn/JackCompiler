@@ -1,3 +1,5 @@
+use crate::lexer::TokenKind;
+
 use super::SubroutineCall;
 
 // --- Expression ---
@@ -71,6 +73,22 @@ pub enum BinaryOp {
 
 impl BinaryOp {
     #[must_use]
+    pub fn from_token(kind: &TokenKind<'_>) -> Option<Self> {
+        match kind {
+            TokenKind::Plus => Some(Self::Add),
+            TokenKind::Minus => Some(Self::Sub),
+            TokenKind::Star => Some(Self::Mul),
+            TokenKind::Slash => Some(Self::Div),
+            TokenKind::Ampersand => Some(Self::And),
+            TokenKind::Pipe => Some(Self::Or),
+            TokenKind::Lt => Some(Self::Lt),
+            TokenKind::Gt => Some(Self::Gt),
+            TokenKind::Equal => Some(Self::Eq),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn as_char(&self) -> char {
         match self {
             Self::Add => '+',
@@ -102,8 +120,6 @@ impl UnaryOp {
         }
     }
 }
-
-
 
 // --- Display Impls ---
 
